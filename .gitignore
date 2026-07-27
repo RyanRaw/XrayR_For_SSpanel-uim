@@ -1,0 +1,20 @@
+# 编译产物
+release/
+*.zip
+*.tar.gz
+/tmp/xrayr-test
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+
+# Go
+go.work
+*.test
+*.out
+vendor/
+
+# 系统
+.DS_Store
+Thumbs.db
