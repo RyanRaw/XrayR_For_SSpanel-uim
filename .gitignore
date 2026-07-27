@@ -1,5 +1,7 @@
 # 编译产物
 release/
+XrayR
+xrayr
 *.zip
 *.tar.gz
 /tmp/xrayr-test

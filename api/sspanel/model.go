@@ -34,6 +34,9 @@ type CustomConfig struct {
 	Flow           string          `json:"flow"`
 	EnableREALITY  bool            `json:"enable_reality"`
 	RealityOpts    *REALITYConfig  `json:"reality-opts"`
+	ShortId        string          `json:"shortId"`        // 兼容平铺 shortId
+	Sni            string          `json:"sni"`            // 兼容平铺 sni (server_name)
+	Dest           string          `json:"dest"`           // 兼容平铺 dest
 }
 
 // UserResponse is the response of user

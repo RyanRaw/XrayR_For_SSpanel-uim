@@ -809,6 +809,25 @@ func (c *APIClient) ParseSSPanelNodeInfo(nodeInfoResponse *NodeInfoResponse) (*a
 			ShortIds:         r.ShortIds,
 		}
 	}
+	// Fallback: if reality-opts not set, build realityConfig from flat custom_config fields
+	if nodeConfig.RealityOpts == nil {
+		// sni → ServerNames
+		if len(realityConfig.ServerNames) == 0 && nodeConfig.Sni != "" {
+			realityConfig.ServerNames = []string{nodeConfig.Sni}
+		}
+		// shortId → ShortIds
+		if len(realityConfig.ShortIds) == 0 && nodeConfig.ShortId != "" {
+			realityConfig.ShortIds = []string{nodeConfig.ShortId}
+		}
+		// dest → Dest (fallback to sni:443 if no dest provided)
+		if realityConfig.Dest == "" {
+			if nodeConfig.Dest != "" {
+				realityConfig.Dest = nodeConfig.Dest
+			} else if nodeConfig.Sni != "" {
+				realityConfig.Dest = nodeConfig.Sni + ":443"
+			}
+		}
+	}
 
 	// Create GeneralNodeInfo
 	nodeInfo := &api.NodeInfo{
@@ -827,7 +846,7 @@ func (c *APIClient) ParseSSPanelNodeInfo(nodeInfoResponse *NodeInfoResponse) (*a
 		ServerKey:         nodeConfig.ServerKey,
 		ServiceName:       nodeConfig.Servicename,
 		Header:            nodeConfig.Header,
-		EnableREALITY:     nodeConfig.EnableREALITY,
+		EnableREALITY:     nodeConfig.EnableREALITY || nodeConfig.EnableVless == "1" || nodeConfig.ShortId != "" || nodeConfig.Sni != "",
 		REALITYConfig:     realityConfig,
 	}
 
