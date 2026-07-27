@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/xtls/xray-core/core"
 )
 
 var (
@@ -23,5 +24,6 @@ func init() {
 }
 
 func showVersion() {
-	fmt.Printf("%s %s (%s) \n", codename, version, intro)
+	fmt.Printf("%s %s (%s)\n", codename, version, intro)
+	fmt.Printf("Xray-core %s\n", core.Version())
 }

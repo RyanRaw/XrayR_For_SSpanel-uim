@@ -15,6 +15,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/xtls/xray-core/core"
 
 	"github.com/XrayR-project/XrayR/panel"
 )
@@ -22,7 +23,8 @@ import (
 var (
 	cfgFile string
 	rootCmd = &cobra.Command{
-		Use: "XrayR",
+		Use:     "XrayR",
+		Version: version,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := run(); err != nil {
 				log.Fatal(err)
@@ -32,7 +34,18 @@ var (
 )
 
 func init() {
+	// Compatibility: rewrite non-standard single-dash flags to standard forms
+	// Older service files and management scripts use -config and -version
+	for i := 1; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "-config":
+			os.Args[i] = "--config"
+		case "-version":
+			os.Args[i] = "--version"
+		}
+	}
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Config file for XrayR.")
+	rootCmd.SetVersionTemplate(codename + " " + version + " (" + intro + ")\nXray-core " + core.Version() + "\n")
 }
 
 func getConfig() *viper.Viper {
