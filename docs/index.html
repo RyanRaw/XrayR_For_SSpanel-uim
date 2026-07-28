@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XrayR — SSPanel-UIM 适配版 文档</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans SC',sans-serif;background:#0d1117;color:#c9d1d9;line-height:1.6;max-width:960px;margin:0 auto;padding:20px}
+a{color:#58a6ff;text-decoration:none}
+a:hover{text-decoration:underline}
+h1{color:#f0f6fc;border-bottom:1px solid #21262d;padding-bottom:10px;margin-bottom:20px}
+h2{color:#f0f6fc;margin:24px 0 12px;font-size:1.3em}
+ul{list-style:none;padding:0}
+li{margin:4px 0}
+li a{display:block;padding:6px 10px;border-radius:6px}
+li a:hover{background:#161b22;text-decoration:none}
+.badge{display:inline-block;margin-right:8px}
+.desc{color:#8b949e;margin-bottom:24px}
+.section{border:1px solid #21262d;border-radius:8px;padding:16px;margin-bottom:16px}
+.section h2{margin-top:0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:640px){.row{grid-template-columns:1fr}}
+footer{color:#484f58;font-size:12px;text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #21262d}
+</style>
+</head>
+<body>
+
+<h1>XrayR — SSPanel-UIM 适配版</h1>
+<p class="desc">
+  <span class="badge"><a href="https://github.com/RyanRaw/XrayR_For_SSpanel-uim"><img src="https://img.shields.io/github/stars/RyanRaw/XrayR_For_SSpanel-uim" alt="stars"></a></span>
+  <span class="badge"><a href="https://github.com/RyanRaw/XrayR_For_SSpanel-uim"><img src="https://img.shields.io/github/forks/RyanRaw/XrayR_For_SSpanel-uim" alt="forks"></a></span>
+</p>
+
+<p class="desc">基于 <a href="https://github.com/XrayR-project/XrayR">XrayR-project/XrayR</a> 二次开发，主要适配 SSPanel-UIM 前端。</p>
+
+<div class="section">
+  <h2>⚡ 一键安装</h2>
+  <pre style="background:#161b22;padding:12px;border-radius:6px;overflow-x:auto;font-size:14px">bash &lt;(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)</pre>
+</div>
+
+<div class="section">
+  <h2>📖 文档目录</h2>
+  <div class="row">
+
+<div>
+<h3>下载和安装</h3>
+<ul>
+<li><a href="xrayr-xia-zai-he-an-zhuang/install/one-click">一键脚本安装</a></li>
+<li><a href="xrayr-xia-zai-he-an-zhuang/install/docker">Docker 安装</a></li>
+<li><a href="xrayr-xia-zai-he-an-zhuang/install/manual">手动安装</a></li>
+<li><a href="xrayr-pei-zhi-wen-jian-shuo-ming/config">配置文件说明</a></li>
+</ul>
+
+<h3>SSPanel 对接</h3>
+<ul>
+<li><a href="dui-jie-sspanel/sspanel/README">基本对接配置</a></li>
+<li><a href="dui-jie-sspanel/sspanel/sspanel_custom_config">Custom Config</a></li>
+</ul>
+
+<h3>其他面板</h3>
+<ul>
+<li><a href="dui-jie-v2board/v2board">V2board</a></li>
+<li><a href="dui-jie-pmpanel/ji-ben-dui-jie-pei-zhi">PMPanel</a></li>
+<li><a href="dui-jie-proxypanel/ji-ben-dui-jie-pei-zhi">ProxyPanel</a></li>
+<li><a href="dui-jie-v2raysocks/v2raysocks">WHMCS (V2RaySocks)</a></li>
+</ul>
+</div>
+
+<div>
+<h3>功能说明</h3>
+<ul>
+<li><a href="gong-neng-shuo-ming/speedlimit">限速功能</a></li>
+<li><a href="gong-neng-shuo-ming/devicelimit">设备连接限制</a></li>
+<li><a href="gong-neng-shuo-ming/dns">自定义 DNS</a></li>
+<li><a href="gong-neng-shuo-ming/zi-ding-yi-lu-you-gong-neng-shuo-ming">自定义路由</a></li>
+<li><a href="gong-neng-shuo-ming/zi-ding-yi-ru-kou-gong-neng-shuo-ming">自定义入口</a></li>
+<li><a href="gong-neng-shuo-ming/zi-ding-yi-chu-kou-gong-neng-shuo-ming">自定义出口</a></li>
+<li><a href="gong-neng-shuo-ming/rule">审计规则</a></li>
+<li><a href="gong-neng-shuo-ming/cert">自动申请证书</a></li>
+<li><a href="gong-neng-shuo-ming/fallback">Fallback</a></li>
+</ul>
+
+<h3>杂项</h3>
+<ul>
+<li><a href="za-xiang/memopt">内存优化</a></li>
+<li><a href="za-xiang/nginx+trojan-zan-shi-di-shen">Nginx+Trojan</a></li>
+</ul>
+</div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h2>🔗 相关链接</h2>
+  <ul>
+    <li><a href="https://github.com/RyanRaw/XrayR_For_SSpanel-uim">GitHub 仓库</a></li>
+    <li><a href="https://github.com/RyanRaw/XrayR_For_SSpanel-uim/releases">Releases</a></li>
+    <li><a href="https://t.me/XrayR_project">Telegram 讨论群</a></li>
+    <li><a href="https://t.me/XrayR_channel">Telegram 通知频道</a></li>
+  </ul>
+</div>
+
+<footer>XrayR SSPanel-UIM Edition &mdash; <a href="https://github.com/RyanRaw/XrayR_For_SSpanel-uim/blob/master/LICENSE">MPL-2.0 License</a></footer>
+
+</body>
+</html>
