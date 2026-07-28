@@ -68,7 +68,7 @@
 ### نصب بصورت یکپارچه
 
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/install.sh)
+bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
 ```
 
 ### استقرار نرم افزار با استفاده از Docker

@@ -69,8 +69,8 @@ This project is just my personal learning and development and maintenance. I do 
 
 ### 1-Click installation
 
-```
-bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/install.sh)
+```bash
+bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
 ```
 
 ### Docker

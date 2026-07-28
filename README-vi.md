@@ -69,8 +69,8 @@ Dự án này chỉ là học tập và phát triển và bảo trì cá nhân c
 
 ### Một cài đặt chính
 
-```
-bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/install.sh)
+```bash
+bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
 ```
 
 ### Sử dụng phần mềm triển khai Docker

@@ -242,7 +242,7 @@ optimize_network() {
 
 # ==================== 安装管理脚本 ====================
 install_manager() {
-    local script_url="https://raw.githubusercontent.com/${OWNER}/${SCRIPT_REPO}/master/install/XrayR.sh"
+    local script_url="https://cdn.jsdelivr.net/gh/${OWNER}/${SCRIPT_REPO}@master/install/XrayR.sh"
     if curl -fLs --connect-timeout 15 --retry 3 --retry-delay 2 -o "$MANAGER_BIN" "$script_url"; then
         chmod +x "$MANAGER_BIN"
         ln -sf "$MANAGER_BIN" "$MANAGER_BIN_LOWER"

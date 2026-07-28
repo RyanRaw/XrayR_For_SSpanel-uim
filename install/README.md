@@ -15,5 +15,5 @@ Find the source code here: [RyanRaw/XrayR_For_SSpanel-uim](https://github.com/Ry
 # 一键安装
 
 ```
-bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/install.sh)
+bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
 ```

@@ -114,7 +114,7 @@ check_install() {
 
 # ==================== 操作函数 ====================
 install_xrayr() {
-    bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/install.sh) "${1:-}"
+    bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh) "${1:-}"
     if [[ $? == 0 && $# == 0 ]]; then
         start
     fi
@@ -125,7 +125,7 @@ update_xrayr() {
     if [[ $# -lt 2 ]]; then
         echo && read -p "输入指定版本（默认最新版）: " ver
     fi
-    bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/install.sh) "${ver}"
+    bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh) "${ver}"
     log_info "更新完成，已自动重启 XrayR，请使用 XrayR log 查看运行日志"
     exit
 }
@@ -188,7 +188,7 @@ install_bbr() {
 
 update_shell() {
     wget -O "$(readlink -f "$0")" -N --no-check-certificate \
-        https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/XrayR.sh
+        https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/XrayR.sh
     chmod +x "$(readlink -f "$0")"
     log_info "升级脚本成功，请重新运行脚本" && exit 0
 }

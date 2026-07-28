@@ -68,8 +68,8 @@ A Xray backend framework that can easily support many panels.
 
 ### 一键安装
 
-```
-bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/install.sh)
+```bash
+bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
 ```
 
 ### 使用Docker部署软件
