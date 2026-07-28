@@ -33,13 +33,30 @@ check_status() {
     if [[ ! -f "$SERVICE_FILE" ]]; then
         return 2
     fi
-    local temp
-    temp=$(systemctl status XrayR 2>/dev/null | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
-    if [[ x"${temp}" == x"running" ]]; then
+    if systemctl is-active --quiet XrayR 2>/dev/null; then
         return 0
     else
         return 1
     fi
+}
+
+# 返回值: 0=已连接, 1=未运行, 2=未安装, 3=未连接(面板不通)
+check_panel_status() {
+    local state logs fail_line success_line
+    if [[ ! -f "$SERVICE_FILE" ]]; then
+        return 2
+    fi
+    state=$(systemctl is-active XrayR 2>/dev/null || true)
+    if [[ x"${state}" != x"active" && x"${state}" != x"activating" ]]; then
+        return 1
+    fi
+    logs=$(journalctl -u XrayR -n 100 --no-pager 2>/dev/null || true)
+    fail_line=$(echo "${logs}" | grep -Ein "connect: connection refused|no such host|timeout|unauthorized|(^|[^0-9])401([^0-9]|$)|(^|[^0-9])403([^0-9]|$)|Failed to get node info|Get node info failed|request failed|cannot get node info|panel" | tail -n1 | cut -d: -f1)
+    success_line=$(echo "${logs}" | grep -Ein "Added|users|Start monitor node status|Start report node status|Get node info|node info|Update node info|Core Start|Xray Core Version" | tail -n1 | cut -d: -f1)
+    if [[ -n "${success_line}" && ( -z "${fail_line}" || "${success_line}" -gt "${fail_line}" ) ]]; then
+        return 0
+    fi
+    return 3
 }
 
 check_enabled() {
@@ -52,6 +69,14 @@ check_installed() {
         return 1
     fi
     return 0
+}
+
+# ==================== 确认 ====================
+confirm() {
+    local prompt="$1" default="$2"
+    echo && read -p "$prompt [默认$default]: " temp
+    [[ x"${temp}" == x"" ]] && temp=$default
+    [[ x"${temp}" == x"y" || x"${temp}" == x"Y" ]]
 }
 
 # ==================== 操作函数 ====================
@@ -96,25 +121,32 @@ do_start() {
     else
         systemctl start XrayR
         sleep 2
-        check_status && log_info "XrayR 启动成功" || log_warn "XrayR 可能启动失败"
+        if systemctl is-active --quiet XrayR 2>/dev/null; then
+            log_info "XrayR 启动成功"
+        else
+            log_warn "XrayR 可能启动失败"
+        fi
     fi
 }
 
 do_stop() {
     systemctl stop XrayR
     sleep 2
-    check_status
-    if [[ $? -eq 1 ]]; then
-        log_info "XrayR 停止成功"
-    else
+    if systemctl is-active --quiet XrayR 2>/dev/null; then
         log_warn "XrayR 停止失败，请查看日志"
+    else
+        log_info "XrayR 停止成功"
     fi
 }
 
 do_restart() {
     systemctl restart XrayR
     sleep 2
-    check_status && log_info "XrayR 重启成功" || log_warn "XrayR 可能启动失败"
+    if systemctl is-active --quiet XrayR 2>/dev/null; then
+        log_info "XrayR 重启成功"
+    else
+        log_warn "XrayR 可能启动失败"
+    fi
 }
 
 do_status() {
@@ -122,11 +154,19 @@ do_status() {
 }
 
 do_enable() {
-    systemctl enable XrayR && log_info "开机自启设置成功" || log_error "开机自启设置失败"
+    if systemctl enable XrayR 2>/dev/null; then
+        log_info "开机自启设置成功"
+    else
+        log_error "开机自启设置失败"
+    fi
 }
 
 do_disable() {
-    systemctl disable XrayR && log_info "取消开机自启成功" || log_error "取消开机自启失败"
+    if systemctl disable XrayR 2>/dev/null; then
+        log_info "取消开机自启成功"
+    else
+        log_error "取消开机自启失败"
+    fi
 }
 
 show_log() {
@@ -134,7 +174,7 @@ show_log() {
 }
 
 install_bbr() {
-    bash <(curl -L -s https://raw.githubusercontent.com/chiakge/Linux-NetSpeed/master/tcp.sh)
+    bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh) optimize
 }
 
 update_shell() {
@@ -169,11 +209,12 @@ show_xrayr_version() {
 }
 
 show_status() {
-    check_status
+    check_panel_status
     case $? in
-        0) echo -e "XrayR 状态: ${green}已运行${plain}" ;;
+        0) echo -e "XrayR 状态: ${green}已运行 (已连接)${plain}" ;;
         1) echo -e "XrayR 状态: ${yellow}未运行${plain}" ;;
         2) echo -e "XrayR 状态: ${red}未安装${plain}" ;;
+        3) echo -e "XrayR 状态: ${yellow}已运行 (面板未连接)${plain}" ;;
     esac
     if check_enabled; then
         echo -e "是否开机自启: ${green}是${plain}"
@@ -201,14 +242,6 @@ show_usage() {
     echo "------------------------------------------"
 }
 
-# ==================== 确认 ====================
-confirm() {
-    local prompt="$1" default="$2"
-    echo && read -p "$prompt [默认$default]: " temp
-    [[ x"${temp}" == x"" ]] && temp=$default
-    [[ x"${temp}" == x"y" || x"${temp}" == x"Y" ]]
-}
-
 # ==================== 菜单 ====================
 show_menu() {
     echo -e "
@@ -229,7 +262,7 @@ show_menu() {
   ${green}9.${plain} 设置 XrayR 开机自启
  ${green}10.${plain} 取消 XrayR 开机自启
 ————————————————
- ${green}11.${plain} 一键安装 bbr (最新内核)
+ ${green}11.${plain} 应用网络优化 (原生 BBR/fq)
  ${green}12.${plain} 查看 XrayR 版本
  ${green}13.${plain} 升级维护脚本
 "
@@ -238,7 +271,7 @@ show_menu() {
 
     case "${num}" in
         0) edit_config; before_show_menu ;;
-        1) check_installed && echo "XrayR 已安装" || install_xrayr; before_show_menu ;;
+        1) if check_installed 2>/dev/null; then log_error "XrayR 已安装"; else install_xrayr; fi; before_show_menu ;;
         2) check_installed && update_xrayr ;;
         3) check_installed && do_uninstall ;;
         4) check_installed && do_start; before_show_menu ;;
@@ -272,7 +305,7 @@ main() {
         log)       check_installed && show_log ;;
         update)    check_installed && update_xrayr "$@" ;;
         config)    edit_config ;;
-        install)   check_installed && echo "XrayR 已安装" || install_xrayr ;;
+        install)   if check_installed 2>/dev/null; then log_error "XrayR 已安装"; else install_xrayr; fi ;;
         uninstall) check_installed && do_uninstall ;;
         version)   show_xrayr_version ;;
         update_shell) update_shell ;;
