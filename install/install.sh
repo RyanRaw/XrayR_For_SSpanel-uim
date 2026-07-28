@@ -140,20 +140,8 @@ install_XrayR() {
     chmod +x XrayR
     mkdir /etc/XrayR/ -p
     rm /etc/systemd/system/XrayR.service -f
-    # 使用本地 XrayR.service 文件
-    script_dir=$(cd "$(dirname "$0")" && pwd)
-    if [[ -f "${script_dir}/XrayR.service" ]]; then
-        cp "${script_dir}/XrayR.service" /etc/systemd/system/XrayR.service
-    else
-        # 回退：从 install 子目录同级查找
-        install_dir=$(cd "$(dirname "$0")/../install" && pwd)
-        if [[ -f "${install_dir}/XrayR.service" ]]; then
-            cp "${install_dir}/XrayR.service" /etc/systemd/system/XrayR.service
-        else
-            echo -e "${red}未找到 XrayR.service 文件，请检查 install 目录${plain}"
-            exit 1
-        fi
-    fi
+    file="https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/XrayR.service"
+    wget -q -N --no-check-certificate -O /etc/systemd/system/XrayR.service ${file}
     systemctl daemon-reload
     systemctl stop XrayR
     systemctl enable XrayR
@@ -192,17 +180,8 @@ install_XrayR() {
     if [[ ! -f /etc/XrayR/rulelist ]]; then
         cp rulelist /etc/XrayR/
     fi
-    # 使用本地 XrayR.sh 管理脚本
-    if [[ -f "${script_dir}/XrayR.sh" ]]; then
-        cp "${script_dir}/XrayR.sh" /usr/bin/XrayR
-    else
-        if [[ -f "${install_dir}/XrayR.sh" ]]; then
-            cp "${install_dir}/XrayR.sh" /usr/bin/XrayR
-        else
-            echo -e "${red}未找到 XrayR.sh 文件，请检查 install 目录${plain}"
-            exit 1
-        fi
-    fi
+    # 下载 XrayR.sh 管理脚本
+    curl -o /usr/bin/XrayR -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/XrayR.sh
     chmod +x /usr/bin/XrayR
     ln -sf /usr/bin/XrayR /usr/bin/xrayr # 小写兼容
     chmod +x /usr/bin/xrayr

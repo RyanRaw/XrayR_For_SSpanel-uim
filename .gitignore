@@ -1,6 +1,7 @@
 # 编译产物
 release/
 XrayR
+XrayR_linux_*
 xrayr
 *.zip
 *.tar.gz
