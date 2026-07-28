@@ -19,7 +19,7 @@ Khung trở lại dựa trên XRay hỗ trợ các giao thức V2ay, Trojan, Sha
 Nếu bạn thích dự án này, bạn có thể nhấp vào Star+Watch ở góc trên bên phải để tiếp tục chú ý đến tiến trình của dự án này.
 
 ## Tài liệu
-Sử dụng hướng dẫn: [Hướng dẫn chi tiết](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki) ( Tiếng Trung )
+Sử dụng hướng dẫn: [Hướng dẫn chi tiết](https://ryanraw.github.io/XrayR_For_SSpanel-uim/) ( Tiếng Trung )
 
 ## Tuyên bố miễn trừ
 
@@ -75,15 +75,15 @@ bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/
 
 ### Sử dụng phần mềm triển khai Docker
 
-[Hướng dẫn cài đặt thông qua Docker](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+[Hướng dẫn cài đặt thông qua Docker](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/docker)
 
 ### Hướng dẫn cài đặt
 
-[Hướng dẫn cài đặt thủ công](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+[Hướng dẫn cài đặt thủ công](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/manual)
 
 ## Tệp cấu hình và hướng dẫn sử dụng chi tiết
 
-[Hướng dẫn chi tiết](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+[Hướng dẫn chi tiết](https://ryanraw.github.io/XrayR_For_SSpanel-uim/)
 
 ## Thanks
 

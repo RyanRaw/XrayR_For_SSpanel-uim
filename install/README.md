@@ -10,7 +10,7 @@ Find the source code here: [RyanRaw/XrayR_For_SSpanel-uim](https://github.com/Ry
 
 # 详细使用教程
 
-[教程](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+[教程](https://ryanraw.github.io/XrayR_For_SSpanel-uim/)
 
 # 一键安装
 

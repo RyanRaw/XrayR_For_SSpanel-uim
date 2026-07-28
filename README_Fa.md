@@ -18,7 +18,7 @@
 
 اگر این پروژه را دوست دارید، می توانید با کلیک بر روی ستاره+ساعت در گوشه بالا سمت راست به ادامه روند پیشرفت این پروژه توجه کنید.
 
-آموزش：[اموزش با جزئیات](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+آموزش：[اموزش با جزئیات](https://ryanraw.github.io/XrayR_For_SSpanel-uim/)
 
 ## سلب مسئولیت
 
@@ -73,15 +73,15 @@ bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/
 
 ### استقرار نرم افزار با استفاده از Docker
 
-[آموزش استقرار داکر](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+[آموزش استقرار داکر](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/docker)
 
 ### نصب دستی
 
-[آموزش نصب دستی](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+[آموزش نصب دستی](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/manual)
 
 ## فایل های پیکربندی و آموزش های با جرئیات
 
-[آموزش مفصل](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+[آموزش مفصل](https://ryanraw.github.io/XrayR_For_SSpanel-uim/)
 
 ## Thanks
 

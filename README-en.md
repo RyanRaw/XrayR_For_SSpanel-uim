@@ -20,9 +20,7 @@ If you like this project, you can click STAR+WATCH in the upper right corner to 
 
 ## Guide for use
 
-Tutorial：[Detailed tutorial](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
-
-
+Tutorial：[Detailed tutorial](https://ryanraw.github.io/XrayR_For_SSpanel-uim/)
 ## Disclaimer
 
 This project is just my personal learning and development and maintenance. I do not guarantee any availability and is not responsible for any consequences caused by the use of this software.
@@ -77,15 +75,15 @@ bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/
 
 ### Docker
 
-[Docker deployment tutorial](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+[Docker deployment tutorial](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/docker)
 
 ### Manual installation
 
-[Manual installation tutorial](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+[Manual installation tutorial](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/manual)
 
 ## Configuration file and detailed use tutorial
 
-[Detailed tutorial](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
+[Detailed tutorial](https://ryanraw.github.io/XrayR_For_SSpanel-uim/)
 
 ## Thanks
 
