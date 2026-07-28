@@ -101,13 +101,10 @@ detect_arch() {
     local machine
     machine="$(uname -m | tr '[:upper:]' '[:lower:]')"
     case "$machine" in
-        x86_64|amd64)       echo "64" ;;
-        aarch64|arm64)      echo "arm64-v8a" ;;
-        s390x)              echo "s390x" ;;
-        *)
-            log_warn "检测架构失败(${machine})，使用默认: 64"
-            echo "64"
-            ;;
+        x86_64|amd64)       echo "XrayR_linux_amd64" ;;
+        aarch64|arm64)      echo "XrayR_linux_arm64" ;;
+        *)                  log_warn "检测架构失败(${machine})，使用默认: XrayR_linux_amd64"
+                            echo "XrayR_linux_amd64" ;;
     esac
 }
 
@@ -288,10 +285,9 @@ check_status() {
 
 # ==================== 安装主流程 ====================
 install_xrayr() {
-    local version archive url
+    local version url
     version="$(normalize_version "${1:-}")"
-    archive="XrayR-linux-$(detect_arch).zip"
-    url="https://github.com/${OWNER}/${REPO}/releases/download/${version}/${archive}"
+    url="https://github.com/${OWNER}/${REPO}/releases/download/${version}/$(detect_arch)"
 
     log_info "开始安装 XrayR ${version}"
     echo "架构: $(detect_arch)"
@@ -310,15 +306,12 @@ install_xrayr() {
     cd "$INSTALL_DIR"
 
     # 下载
-    if ! wget -q --no-check-certificate -O "${archive}" "${url}"; then
+    if ! wget -q --no-check-certificate -O "${INSTALL_DIR}/XrayR" "${url}"; then
         log_error "下载 XrayR 失败，请检查网络或版本是否存在。"
         exit 1
     fi
 
-    # 解压
-    unzip -q "${archive}"
-    rm -f "${archive}"
-    chmod +x XrayR
+    chmod +x "${INSTALL_DIR}/XrayR"
 
     # 配置目录
     mkdir -p "$CONFIG_DIR"
