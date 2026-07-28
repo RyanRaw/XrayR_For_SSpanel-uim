@@ -1,0 +1,6 @@
+# Jekyll config for XrayR SSPanel-UIM Docs
+title: XrayR SSPanel-UIM Docs
+description: XrayR backend framework adapted for SSPanel-UIM
+remote_theme: jekyll-theme-cayman
+show_downloads: false
+google_analytics:
