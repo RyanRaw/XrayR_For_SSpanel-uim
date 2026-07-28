@@ -1,25 +1,26 @@
-# XrayR
+# XrayR — SSPanel-UIM Edition
 
 [![](https://img.shields.io/badge/TgChat-@XrayR讨论-blue.svg)](https://t.me/XrayR_project)
 [![](https://img.shields.io/badge/Channel-@XrayR通知-blue.svg)](https://t.me/XrayR_channel)
-![](https://img.shields.io/github/stars/XrayR-project/XrayR)
-![](https://img.shields.io/github/forks/XrayR-project/XrayR)
-![](https://github.com/XrayR-project/XrayR/actions/workflows/release.yml/badge.svg)
-![](https://github.com/XrayR-project/XrayR/actions/workflows/docker.yml/badge.svg)
-[![Github All Releases](https://img.shields.io/github/downloads/XrayR-project/XrayR/total.svg)]()
+![](https://img.shields.io/github/stars/RyanRaw/XrayR_For_SSpanel-uim)
+![](https://img.shields.io/github/forks/RyanRaw/XrayR_For_SSpanel-uim)
+![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/release.yml/badge.svg)
+![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/docker.yml/badge.svg)
+[![Github All Releases](https://img.shields.io/github/downloads/RyanRaw/XrayR_For_SSpanel-uim/total.svg)]()
 
-[Iranian(farsi) README](https://github.com/XrayR-project/XrayR/blob/master/README_Fa.md), [Vietnamese(vi) README](https://github.com/XrayR-project/XrayR/blob/master/README-vi.md), [English(en) README](https://github.com/XrayR-project/XrayR/blob/master/README-en.md)
+[Iranian(farsi) README](README_Fa.md) | [Vietnamese(vi) README](README-vi.md) | [Chinese(zh) README](README.md)
 
 A Xray backend framework that can easily support many panels.
 
-A back -end framework based on XRAY supports V2ay, Trojan, Shadowsocks protocols, which are easy to expand and support multi -panel docker.
+A back-end framework based on XRAY supports V2ay, Trojan, Shadowsocks protocols, which are easy to expand and support multi-panel docking.
 
+**This project is a fork of [XrayR-project/XrayR](https://github.com/XrayR-project/XrayR), primarily adapted for SSPanel-UIM.**
 
 If you like this project, you can click STAR+WATCH in the upper right corner to continue to pay attention to the progress of this project.
 
 ## Guide for use
 
-Tutorial：[Detailed tutorial](https://xrayr-project.github.io/XrayR-doc/)
+Tutorial：[Detailed tutorial](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
 
 
 ## Disclaimer
@@ -31,7 +32,7 @@ This project is just my personal learning and development and maintenance. I do 
 * Permanent open source and free.
 * Support V2Ray, Trojan, Shadowsocks multiple protocols.
 * Support new features such as Vless and XTLS.
-* Support single instance docking multi -panel and multi -node, no need to start repeatedly.
+* Support single instance docking multi-panel and multi-node, no need to start repeatedly.
 * Support restriction online IP
 * Support node port level and user level speed limit.
 * The configuration is simple and clear.
@@ -71,20 +72,20 @@ This project is just my personal learning and development and maintenance. I do 
 ### 1-Click installation
 
 ```
-wget -N https://raw.githubusercontent.com/XrayR-project/XrayR-release/master/install.sh && bash install.sh
+bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/install.sh)
 ```
 
 ### Docker
 
-[Docker deployment tutorial](https://xrayr-project.github.io/XrayR-doc/xrayr-xia-zai-he-an-zhuang/install/docker)
+[Docker deployment tutorial](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
 
 ### Manual installation
 
-[Manual installation tutorial](https://xrayr-project.github.io/XrayR-doc/xrayr-xia-zai-he-an-zhuang/install/manual)
+[Manual installation tutorial](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
 
 ## Configuration file and detailed use tutorial
 
-[Detailed tutorial](https://xrayr-project.github.io/XrayR-doc/)
+[Detailed tutorial](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
 
 ## Thanks
 
@@ -92,10 +93,11 @@ wget -N https://raw.githubusercontent.com/XrayR-project/XrayR-release/master/ins
 * [V2Fly](https://github.com/v2fly)
 * [VNet-V2ray](https://github.com/ProxyPanel/VNet-V2ray)
 * [Air-Universe](https://github.com/crossfw/Air-Universe)
+* [XrayR-project/XrayR](https://github.com/XrayR-project/XrayR) — upstream project
 
 ## Licence
 
-[Mozilla Public License Version 2.0](https://github.com/XrayR-project/XrayR/blob/master/LICENSE)
+[Mozilla Public License Version 2.0](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/blob/master/LICENSE)
 
 ## Telgram
 
@@ -106,5 +108,3 @@ wget -N https://raw.githubusercontent.com/XrayR-project/XrayR-release/master/ins
 ## Stargazers over time
 
 [![Stargazers over time](https://starchart.cc/XrayR-project/XrayR.svg)](https://starchart.cc/XrayR-project/XrayR)
-
-

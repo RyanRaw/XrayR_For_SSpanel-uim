@@ -1,23 +1,24 @@
-# XrayR
+# XrayR — SSPanel-UIM 适配版
 
 [![](https://img.shields.io/badge/TgChat-@XrayR讨论-blue.svg)](https://t.me/XrayR_project)
 [![](https://img.shields.io/badge/Channel-@XrayR通知-blue.svg)](https://t.me/XrayR_channel)
-![](https://img.shields.io/github/stars/XrayR-project/XrayR)
-![](https://img.shields.io/github/forks/XrayR-project/XrayR)
-![](https://github.com/XrayR-project/XrayR/actions/workflows/release.yml/badge.svg)
-![](https://github.com/XrayR-project/XrayR/actions/workflows/docker.yml/badge.svg)
-[![Github All Releases](https://img.shields.io/github/downloads/XrayR-project/XrayR/total.svg)]()
+![](https://img.shields.io/github/stars/RyanRaw/XrayR_For_SSpanel-uim)
+![](https://img.shields.io/github/forks/RyanRaw/XrayR_For_SSpanel-uim)
+![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/release.yml/badge.svg)
+![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/docker.yml/badge.svg)
+[![Github All Releases](https://img.shields.io/github/downloads/RyanRaw/XrayR_For_SSpanel-uim/total.svg)]()
 
-
-[English](https://github.com/XrayR-project/XrayR/blob/master/README-en.md)|[Iranian](https://github.com/XrayR-project/XrayR/blob/master/README_Fa.md)|[Vietnamese](https://github.com/XrayR-project/XrayR/blob/master/README-vi.md)
+[English](README-en.md) | [Iranian](README_Fa.md) | [Vietnamese](README-vi.md)
 
 A Xray backend framework that can easily support many panels.
 
 一个基于Xray的后端框架，支持V2ay,Trojan,Shadowsocks协议，极易扩展，支持多面板对接。
 
+**本项目基于 [XrayR-project/XrayR](https://github.com/XrayR-project/XrayR) 二次开发，主要适配 SSPanel-UIM 前端。**
+
 如果您喜欢本项目，可以右上角点个star+watch，持续关注本项目的进展。
 
-使用教程：[详细使用教程](https://xrayr-project.github.io/XrayR-doc/)
+使用教程：[详细使用教程](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
 
 
 ## 免责声明
@@ -70,20 +71,20 @@ A Xray backend framework that can easily support many panels.
 ### 一键安装
 
 ```
-wget -N https://raw.githubusercontent.com/XrayR-project/XrayR-release/master/install.sh && bash install.sh
+bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/install.sh)
 ```
 
 ### 使用Docker部署软件
 
-[Docker部署教程](https://xrayr-project.github.io/XrayR-doc/xrayr-xia-zai-he-an-zhuang/install/docker)
+[Docker部署教程](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
 
 ### 手动安装
 
-[手动安装教程](https://xrayr-project.github.io/XrayR-doc/xrayr-xia-zai-he-an-zhuang/install/manual)
+[手动安装教程](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
 
 ## 配置文件及详细使用教程
 
-[详细使用教程](https://xrayr-project.github.io/XrayR-doc/)
+[详细使用教程](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/wiki)
 
 ## Thanks
 
@@ -91,10 +92,11 @@ wget -N https://raw.githubusercontent.com/XrayR-project/XrayR-release/master/ins
 * [V2Fly](https://github.com/v2fly)
 * [VNet-V2ray](https://github.com/ProxyPanel/VNet-V2ray)
 * [Air-Universe](https://github.com/crossfw/Air-Universe)
+* [XrayR-project/XrayR](https://github.com/XrayR-project/XrayR) — 上游项目
 
 ## Licence
 
-[Mozilla Public License Version 2.0](https://github.com/XrayR-project/XrayR/blob/master/LICENSE)
+[Mozilla Public License Version 2.0](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/blob/master/LICENSE)
 
 ## Telgram
 
@@ -105,5 +107,3 @@ wget -N https://raw.githubusercontent.com/XrayR-project/XrayR-release/master/ins
 ## Stargazers over time
 
 [![Stargazers over time](https://starchart.cc/XrayR-project/XrayR.svg)](https://starchart.cc/XrayR-project/XrayR)
-
-
