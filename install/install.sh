@@ -20,8 +20,8 @@ SYSCTL_CONF="/etc/sysctl.conf"
 cur_dir=$(pwd)
 
 # ==================== 日志函数 ====================
-log_info()    { echo -e "${green}$*${plain}"; }
-log_warn()    { echo -e "${yellow}$*${plain}"; }
+log_info()    { echo -e "${green}$*${plain}" >&2; }
+log_warn()    { echo -e "${yellow}$*${plain}" >&2; }
 log_error()   { echo -e "${red}$*${plain}" >&2; }
 
 # ==================== 前置检查 ====================
