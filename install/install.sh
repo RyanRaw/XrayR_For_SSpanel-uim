@@ -33,23 +33,50 @@ need_root() {
 }
 
 check_os() {
-    if [[ -f /etc/redhat-release ]]; then
-        release="centos"
-    elif grep -Eqi "debian" /etc/issue 2>/dev/null; then
-        release="debian"
-    elif grep -Eqi "ubuntu" /etc/issue 2>/dev/null; then
-        release="ubuntu"
-    elif grep -Eqi "centos|red hat|redhat" /etc/issue 2>/dev/null; then
-        release="centos"
-    elif grep -Eqi "debian" /proc/version 2>/dev/null; then
-        release="debian"
-    elif grep -Eqi "ubuntu" /proc/version 2>/dev/null; then
-        release="ubuntu"
-    elif grep -Eqi "centos|red hat|redhat" /proc/version 2>/dev/null; then
-        release="centos"
-    else
-        log_error "未检测到系统版本，请联系脚本作者！"
-        exit 1
+    # 优先使用 /etc/os-release 的 ID 字段（Alpine 等均可识别）
+    if [[ -f /etc/os-release ]]; then
+        local os_id
+        os_id=$(. /etc/os-release 2>/dev/null; echo "${ID:-}")
+        case "$os_id" in
+            alpine)
+                release="alpine"
+                ;;
+            debian)
+                release="debian"
+                ;;
+            ubuntu)
+                release="ubuntu"
+                ;;
+            centos|rhel|fedora|rocky|almalinux)
+                release="centos"
+                ;;
+        esac
+    fi
+
+    # 兜底：通过 /etc/issue、/proc/version 识别（兼容旧系统 / 容器）
+    if [[ -z "${release:-}" ]]; then
+        if [[ -f /etc/redhat-release ]]; then
+            release="centos"
+        elif grep -Eqi "debian" /etc/issue 2>/dev/null; then
+            release="debian"
+        elif grep -Eqi "ubuntu" /etc/issue 2>/dev/null; then
+            release="ubuntu"
+        elif grep -Eqi "centos|red hat|redhat" /etc/issue 2>/dev/null; then
+            release="centos"
+        elif grep -Eqi "alpine" /etc/issue 2>/dev/null; then
+            release="alpine"
+        elif grep -Eqi "debian" /proc/version 2>/dev/null; then
+            release="debian"
+        elif grep -Eqi "ubuntu" /proc/version 2>/dev/null; then
+            release="ubuntu"
+        elif grep -Eqi "centos|red hat|redhat" /proc/version 2>/dev/null; then
+            release="centos"
+        elif grep -Eqi "alpine" /proc/version 2>/dev/null; then
+            release="alpine"
+        else
+            log_error "未检测到系统版本，请联系脚本作者！"
+            exit 1
+        fi
     fi
 
     # 检测系统版本号
@@ -76,6 +103,9 @@ check_os() {
             log_error "请使用 Debian 8 或更高版本的系统！"
             exit 1
         fi
+    elif [[ x"${release}" == x"alpine" ]]; then
+        # Alpine 无最低版本限制，仅提示
+        log_info "检测到 Alpine 系统，将使用 OpenRC 管理服务。"
     fi
 }
 
@@ -113,6 +143,10 @@ install_base() {
     if [[ x"${release}" == x"centos" ]]; then
         yum install epel-release -y
         yum install wget curl unzip tar crontabs socat -y
+    elif [[ x"${release}" == x"alpine" ]]; then
+        # Alpine 使用 apk，OpenRC 自带 crond（busybox），无需额外 cron 包
+        apk update
+        apk add wget curl unzip tar socat bash
     else
         apt update -y
         apt install wget curl unzip tar cron socat -y
@@ -143,6 +177,34 @@ RestartSec=5s
 
 [Install]
 WantedBy=multi-user.target
+EOF
+}
+
+# ==================== OpenRC 服务脚本（Alpine） ====================
+OPENRC_FILE="/etc/init.d/XrayR"
+
+write_openrc() {
+    cat > "$OPENRC_FILE" <<'EOF'
+#!/sbin/openrc-run
+
+name="XrayR"
+description="XrayR Service"
+command="/usr/local/XrayR/XrayR"
+command_args="--config /etc/XrayR/config.yml"
+command_background="yes"
+pidfile="/run/XrayR.pid"
+directory="/usr/local/XrayR"
+
+depend() {
+    need net
+    after firewall
+}
+EOF
+    chmod +x "$OPENRC_FILE"
+    # 写入 rc 默认配置，确保开机自启参数（部分 Alpine 用 /etc/conf.d/XrayR）
+    cat > /etc/conf.d/XrayR <<'EOF'
+# XrayR OpenRC 配置
+cfgfile="/etc/XrayR/config.yml"
 EOF
 }
 
@@ -271,6 +333,16 @@ copy_config_files() {
 # ==================== 状态查询 ====================
 # 返回值: 0=运行中, 1=未运行, 2=未安装
 check_status() {
+    if [[ x"${release}" == x"alpine" ]]; then
+        if [[ ! -f "$OPENRC_FILE" ]]; then
+            return 2
+        fi
+        if rc-service XrayR status >/dev/null 2>&1; then
+            return 0
+        else
+            return 1
+        fi
+    fi
     if [[ ! -f "$SERVICE_FILE" ]]; then
         return 2
     fi
@@ -280,6 +352,41 @@ check_status() {
         return 0
     else
         return 1
+    fi
+}
+
+# ==================== 服务控制辅助（兼容 systemd / OpenRC） ====================
+svc_stop() {
+    if [[ x"${release}" == x"alpine" ]]; then
+        rc-service XrayR stop >/dev/null 2>&1 || true
+    elif command -v systemctl >/dev/null 2>&1; then
+        systemctl stop XrayR >/dev/null 2>&1 || true
+    fi
+}
+
+svc_enable() {
+    if [[ x"${release}" == x"alpine" ]]; then
+        rc-update add XrayR default >/dev/null 2>&1 || true
+    elif command -v systemctl >/dev/null 2>&1; then
+        systemctl daemon-reload
+        systemctl enable XrayR >/dev/null 2>&1 || true
+    fi
+}
+
+svc_restart() {
+    if [[ x"${release}" == x"alpine" ]]; then
+        rc-service XrayR restart >/dev/null 2>&1 || true
+    elif command -v systemctl >/dev/null 2>&1; then
+        systemctl daemon-reload
+        systemctl restart XrayR >/dev/null 2>&1 || true
+    fi
+}
+
+svc_disable() {
+    if [[ x"${release}" == x"alpine" ]]; then
+        rc-update del XrayR default >/dev/null 2>&1 || true
+    elif command -v systemctl >/dev/null 2>&1; then
+        systemctl disable XrayR >/dev/null 2>&1 || true
     fi
 }
 
@@ -296,9 +403,7 @@ install_xrayr() {
     install_base
 
     # 停止已有服务
-    if command -v systemctl >/dev/null 2>&1; then
-        systemctl stop XrayR >/dev/null 2>&1 || true
-    fi
+    svc_stop
 
     # 清理并创建安装目录
     rm -rf "$INSTALL_DIR"
@@ -316,8 +421,13 @@ install_xrayr() {
     # 配置目录
     mkdir -p "$CONFIG_DIR"
 
-    # systemd 服务
-    write_service
+    # 服务文件（按系统分支：systemd / OpenRC）
+    if [[ x"${release}" == x"alpine" ]]; then
+        rm -f "$SERVICE_FILE"   # 清理可能残留的 systemd 文件
+        write_openrc
+    else
+        write_service
+    fi
 
     # 网络优化
     optimize_network
@@ -329,10 +439,9 @@ install_xrayr() {
     copy_config_files
 
     # 启动服务
-    systemctl daemon-reload
-    systemctl enable XrayR >/dev/null 2>&1 || true
+    svc_enable
     if [[ -f "$CONFIG_DIR/config.yml" ]]; then
-        systemctl restart XrayR >/dev/null 2>&1 || true
+        svc_restart
         sleep 2
         check_status
         if [[ $? == 0 ]]; then
@@ -359,11 +468,9 @@ install_xrayr() {
 uninstall_xrayr() {
     need_root
     log_info "开始卸载 XrayR..."
-    if command -v systemctl >/dev/null 2>&1; then
-        systemctl stop XrayR >/dev/null 2>&1 || true
-        systemctl disable XrayR >/dev/null 2>&1 || true
-    fi
-    rm -f "$SERVICE_FILE"
+    svc_disable
+    svc_stop
+    rm -f "$SERVICE_FILE" "$OPENRC_FILE" /etc/conf.d/XrayR
     if command -v systemctl >/dev/null 2>&1; then
         systemctl daemon-reload || true
         systemctl reset-failed >/dev/null 2>&1 || true

@@ -11,6 +11,16 @@ version="v1.0.0"
 INSTALL_DIR="/usr/local/XrayR"
 CONFIG_DIR="/etc/XrayR"
 SERVICE_FILE="/etc/systemd/system/XrayR.service"
+OPENRC_FILE="/etc/init.d/XrayR"
+
+# 检测系统类型（Alpine 使用 OpenRC，其余使用 systemd）
+if [[ -f /etc/os-release ]]; then
+    . /etc/os-release 2>/dev/null
+    release="${ID:-}"
+fi
+if [[ -z "${release:-}" ]]; then
+    release="debian"   # 兜底
+fi
 
 # ==================== 日志 ====================
 log_info()  { echo -e "${green}$*${plain}"; }
@@ -28,29 +38,45 @@ before_show_menu() {
 }
 
 # ==================== 状态查询 ====================
+service_installed() {
+    if [[ x"${release}" == x"alpine" ]]; then
+        [[ -f "$OPENRC_FILE" ]]
+    else
+        [[ -f "$SERVICE_FILE" ]]
+    fi
+}
+
 # 返回值: 0=运行中, 1=未运行, 2=未安装
 check_status() {
-    if [[ ! -f "$SERVICE_FILE" ]]; then
+    if ! service_installed; then
         return 2
     fi
-    if systemctl is-active --quiet XrayR 2>/dev/null; then
-        return 0
+    if [[ x"${release}" == x"alpine" ]]; then
+        rc-service XrayR status >/dev/null 2>&1 && return 0 || return 1
     else
-        return 1
+        systemctl is-active --quiet XrayR 2>/dev/null && return 0 || return 1
     fi
 }
 
 # 返回值: 0=已连接, 1=未运行, 2=未安装, 3=未连接(面板不通)
 check_panel_status() {
     local state logs fail_line success_line
-    if [[ ! -f "$SERVICE_FILE" ]]; then
+    if ! service_installed; then
         return 2
     fi
-    state=$(systemctl is-active XrayR 2>/dev/null || true)
+    if [[ x"${release}" == x"alpine" ]]; then
+        state=$(rc-service XrayR status >/dev/null 2>&1 && echo active || echo inactive)
+    else
+        state=$(systemctl is-active XrayR 2>/dev/null || true)
+    fi
     if [[ x"${state}" != x"active" && x"${state}" != x"activating" ]]; then
         return 1
     fi
-    logs=$(journalctl -u XrayR -n 100 --no-pager 2>/dev/null || true)
+    if [[ x"${release}" == x"alpine" ]]; then
+        logs=$(rc-service XrayR status 2>/dev/null || true)
+    else
+        logs=$(journalctl -u XrayR -n 100 --no-pager 2>/dev/null || true)
+    fi
     fail_line=$(echo "${logs}" | grep -Ein "connect: connection refused|no such host|timeout|unauthorized|(^|[^0-9])401([^0-9]|$)|(^|[^0-9])403([^0-9]|$)|Failed to get node info|Get node info failed|request failed|cannot get node info|panel" | tail -n1 | cut -d: -f1)
     success_line=$(echo "${logs}" | grep -Ein "Added|users|Start monitor node status|Start report node status|Get node info|node info|Update node info|Core Start|Xray Core Version" | tail -n1 | cut -d: -f1)
     if [[ -n "${success_line}" && ( -z "${fail_line}" || "${success_line}" -gt "${fail_line}" ) ]]; then
@@ -60,11 +86,15 @@ check_panel_status() {
 }
 
 check_enabled() {
-    systemctl is-enabled XrayR >/dev/null 2>&1
+    if [[ x"${release}" == x"alpine" ]]; then
+        rc-update show default 2>/dev/null | grep -q "^ *XrayR " 
+    else
+        systemctl is-enabled XrayR >/dev/null 2>&1
+    fi
 }
 
 check_installed() {
-    if [[ ! -f "$SERVICE_FILE" ]]; then
+    if ! service_installed; then
         log_error "请先安装 XrayR"
         return 1
     fi
@@ -119,9 +149,13 @@ do_start() {
         log_error "请先安装 XrayR"
         return 1
     else
-        systemctl start XrayR
+        if [[ x"${release}" == x"alpine" ]]; then
+            rc-service XrayR start
+        else
+            systemctl start XrayR
+        fi
         sleep 2
-        if systemctl is-active --quiet XrayR 2>/dev/null; then
+        if check_status; then
             log_info "XrayR 启动成功"
         else
             log_warn "XrayR 可能启动失败"
@@ -130,9 +164,13 @@ do_start() {
 }
 
 do_stop() {
-    systemctl stop XrayR
+    if [[ x"${release}" == x"alpine" ]]; then
+        rc-service XrayR stop
+    else
+        systemctl stop XrayR
+    fi
     sleep 2
-    if systemctl is-active --quiet XrayR 2>/dev/null; then
+    if check_status; then
         log_warn "XrayR 停止失败，请查看日志"
     else
         log_info "XrayR 停止成功"
@@ -140,9 +178,13 @@ do_stop() {
 }
 
 do_restart() {
-    systemctl restart XrayR
+    if [[ x"${release}" == x"alpine" ]]; then
+        rc-service XrayR restart
+    else
+        systemctl restart XrayR
+    fi
     sleep 2
-    if systemctl is-active --quiet XrayR 2>/dev/null; then
+    if check_status; then
         log_info "XrayR 重启成功"
     else
         log_warn "XrayR 可能启动失败"
@@ -150,27 +192,57 @@ do_restart() {
 }
 
 do_status() {
-    systemctl status XrayR --no-pager -l
+    if [[ x"${release}" == x"alpine" ]]; then
+        rc-service XrayR status
+    else
+        systemctl status XrayR --no-pager -l
+    fi
 }
 
 do_enable() {
-    if systemctl enable XrayR 2>/dev/null; then
-        log_info "开机自启设置成功"
+    if [[ x"${release}" == x"alpine" ]]; then
+        if rc-update add XrayR default 2>/dev/null; then
+            log_info "开机自启设置成功"
+        else
+            log_error "开机自启设置失败"
+        fi
     else
-        log_error "开机自启设置失败"
+        if systemctl enable XrayR 2>/dev/null; then
+            log_info "开机自启设置成功"
+        else
+            log_error "开机自启设置失败"
+        fi
     fi
 }
 
 do_disable() {
-    if systemctl disable XrayR 2>/dev/null; then
-        log_info "取消开机自启成功"
+    if [[ x"${release}" == x"alpine" ]]; then
+        if rc-update del XrayR default 2>/dev/null; then
+            log_info "取消开机自启成功"
+        else
+            log_error "取消开机自启失败"
+        fi
     else
-        log_error "取消开机自启失败"
+        if systemctl disable XrayR 2>/dev/null; then
+            log_info "取消开机自启成功"
+        else
+            log_error "取消开机自启失败"
+        fi
     fi
 }
 
 show_log() {
-    journalctl -u XrayR.service -e --no-pager -f
+    if [[ x"${release}" == x"alpine" ]]; then
+        local pid
+        pid=$(cat /run/XrayR.pid 2>/dev/null || true)
+        if [[ -n "$pid" ]]; then
+            tail -f /proc/${pid}/fd/1 2>/dev/null || log_warn "无法读取 XrayR 输出日志"
+        else
+            log_warn "XrayR 未运行或无法定位日志（Alpine 下请使用 rc-service XrayR status 查看）"
+        fi
+    else
+        journalctl -u XrayR.service -e --no-pager -f
+    fi
 }
 
 install_bbr() {
@@ -188,11 +260,17 @@ update_shell() {
 
 do_uninstall() {
     confirm "确定要卸载 XrayR 吗?" "n" || { show_menu; return 0; }
-    systemctl stop XrayR >/dev/null 2>&1 || true
-    systemctl disable XrayR >/dev/null 2>&1 || true
-    rm -f "$SERVICE_FILE"
-    systemctl daemon-reload || true
-    systemctl reset-failed >/dev/null 2>&1 || true
+    if [[ x"${release}" == x"alpine" ]]; then
+        rc-service XrayR stop >/dev/null 2>&1 || true
+        rc-update del XrayR default >/dev/null 2>&1 || true
+        rm -f "$OPENRC_FILE" /etc/conf.d/XrayR
+    else
+        systemctl stop XrayR >/dev/null 2>&1 || true
+        systemctl disable XrayR >/dev/null 2>&1 || true
+        rm -f "$SERVICE_FILE"
+        systemctl daemon-reload || true
+        systemctl reset-failed >/dev/null 2>&1 || true
+    fi
     rm -rf "$CONFIG_DIR" "$INSTALL_DIR"
     rm -f /usr/bin/XrayR /usr/bin/xrayr
     echo ""
