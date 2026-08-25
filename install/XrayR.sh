@@ -238,10 +238,21 @@ show_log() {
             log_warn "未找到日志文件 ${logfile}，请确认 XrayR 已安装并启动。"
             return 1
         fi
-        if ! check_status; then
-            log_warn "XrayR 当前未运行，仅显示已有日志（实时跟踪 ${logfile}）。"
+        check_status
+        local st=$?
+        if [[ $st -eq 0 ]]; then
+            tail -f "$logfile"
+        elif [[ $st -eq 2 ]]; then
+            log_warn "XrayR 未安装或 init 脚本不存在，请先运行 install.sh install"
+            return 1
+        else
+            # 进程存在但已退出（可能是配置问题）
+            if grep -q "error\|fail\|config" "$logfile" 2>/dev/null; then
+                log_warn "日志中发现错误/配置问题，请检查 ${logfile}"
+            fi
+            log_info "XrayR 当前未运行，仅显示已有日志（实时跟踪 ${logfile}）。"
+            tail -f "$logfile"
         fi
-        tail -f "$logfile"
     else
         journalctl -u XrayR.service -e --no-pager -f
     fi

@@ -205,6 +205,14 @@ depend() {
     need net
     after firewall
 }
+
+start_pre() {
+    # 启动前验证二进制存在，避免静默失败
+    if [[ ! -x /usr/local/XrayR/XrayR ]]; then
+        einfo "XrayR 二进制不存在或不可执行，请先运行 install.sh install"
+        return 1
+    fi
+}
 EOF
     chmod +x "$OPENRC_FILE"
     # 写入 rc 默认配置，确保开机自启参数（部分 Alpine 用 /etc/conf.d/XrayR）
