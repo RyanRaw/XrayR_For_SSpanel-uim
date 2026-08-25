@@ -233,13 +233,15 @@ do_disable() {
 
 show_log() {
     if [[ x"${release}" == x"alpine" ]]; then
-        local pid
-        pid=$(cat /run/XrayR.pid 2>/dev/null || true)
-        if [[ -n "$pid" ]]; then
-            tail -f /proc/${pid}/fd/1 2>/dev/null || log_warn "无法读取 XrayR 输出日志"
-        else
-            log_warn "XrayR 未运行或无法定位日志（Alpine 下请使用 rc-service XrayR status 查看）"
+        local logfile="/var/log/XrayR.log"
+        if [[ ! -f "$logfile" ]]; then
+            log_warn "未找到日志文件 ${logfile}，请确认 XrayR 已安装并启动。"
+            return 1
         fi
+        if ! check_status; then
+            log_warn "XrayR 当前未运行，仅显示已有日志（实时跟踪 ${logfile}）。"
+        fi
+        tail -f "$logfile"
     else
         journalctl -u XrayR.service -e --no-pager -f
     fi

@@ -184,6 +184,9 @@ EOF
 OPENRC_FILE="/etc/init.d/XrayR"
 
 write_openrc() {
+    mkdir -p /var/log
+    touch /var/log/XrayR.log
+    chmod 644 /var/log/XrayR.log
     cat > "$OPENRC_FILE" <<'EOF'
 #!/sbin/openrc-run
 
@@ -194,6 +197,9 @@ command_args="--config /etc/XrayR/config.yml"
 command_background="yes"
 pidfile="/run/XrayR.pid"
 directory="/usr/local/XrayR"
+# 将标准输出/错误重定向到日志文件，便于 XrayR log 查看
+output_log="/var/log/XrayR.log"
+error_log="/var/log/XrayR.log"
 
 depend() {
     need net
