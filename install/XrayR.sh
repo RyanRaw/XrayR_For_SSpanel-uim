@@ -101,6 +101,15 @@ check_installed() {
     return 0
 }
 
+# 把未识别的命令原样透传给 XrayR 二进制（mldsa65 / x25519 / tls ping 等）
+run_binary() {
+    if [[ ! -x "$INSTALL_DIR/XrayR" ]]; then
+        log_error "XrayR 未安装，请先执行：XrayR install"
+        return 1
+    fi
+    exec "$INSTALL_DIR/XrayR" "$@"
+}
+
 # ==================== 确认 ====================
 confirm() {
     local prompt="$1" default="$2"
@@ -331,6 +340,11 @@ show_usage() {
     echo "XrayR uninstall    - 卸载 XrayR"
     echo "XrayR version      - 查看 XrayR 版本"
     echo "------------------------------------------"
+    echo "未识别的参数会原样透传给 XrayR 二进制，例如: "
+    echo "XrayR mldsa65      - 生成 ML-DSA-65 密钥对 (REALITY)"
+    echo "XrayR x25519       - 生成 x25519 密钥对"
+    echo "XrayR tls ping xxx - TLS 握手探测 (可加 -ip <ip>)"
+    echo "------------------------------------------"
 }
 
 # ==================== 菜单 ====================
@@ -382,9 +396,22 @@ show_menu() {
 # ==================== 入口 ====================
 main() {
     if [[ $# == 0 ]]; then
+        need_root
         show_menu
         return 0
     fi
+
+    case $1 in
+        # 以下为管理命令，需要 root 权限
+        start|stop|restart|status|enable|disable|log|update|config|install|uninstall|version|update_shell)
+            need_root
+            ;;
+        *)
+            # 其他命令原样透传给 XrayR 二进制，工具类命令（mldsa65 / x25519 / tls ping）无需 root
+            run_binary "$@"
+            return
+            ;;
+    esac
 
     case $1 in
         start)     check_installed && do_start ;;
@@ -400,9 +427,7 @@ main() {
         uninstall) check_installed && do_uninstall ;;
         version)   show_xrayr_version ;;
         update_shell) update_shell ;;
-        *)         show_usage ;;
     esac
 }
 
-need_root
 main "$@"

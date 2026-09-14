@@ -61,13 +61,23 @@ Nodes:
         ProxyProtocolVer: 0 # Send PROXY protocol version, 0 for disable
         ServerNames: # Required, list of available serverNames for the client, * wildcard is not supported at the moment.
           - www.abcdefg.org
-        PrivateKey: MI7DqZ2hiygWWwYlDb94LuWQufDNpeTNTJ7lBs24uVE # Required, execute './xray x25519' to generate.
+        PrivateKey: MI7DqZ2hiygWWwYlDb94LuWQufDNpeTNTJ7lBs24uVE # Required, generate with: XrayR x25519
         MinClientVer: # Optional, minimum version of Xray client, format is x.y.z.
         MaxClientVer: # Optional, maximum version of Xray client, format is x.y.z.
         MaxTimeDiff: 0 # Optional, maximum allowed time difference, unit is in milliseconds.
         ShortIds: # Required, list of available shortIds for the client, can be used to differentiate between different clients.
           - ""
           - 0123456789abcdef
+        mldsa65Seed: # Optional, ML-DSA-65 seed for REALITY post-quantum signature, must differ from PrivateKey. Generate with: XrayR mldsa65
+        masterKeyLog: # Optional, write TLS master keys to this file for debugging (e.g. with Wireshark)
+        limitFallbackUpload: # Optional, rate limit the traffic that fails REALITY auth and is forwarded to Dest, 0 means no limit
+          afterBytes: 0 # Start limiting after this many bytes have been forwarded
+          bytesPerSec: 0 # Limit speed, bytes per second
+          burstBytesPerSec: 0 # Burst speed, bytes per second
+        limitFallbackDownload:
+          afterBytes: 0
+          bytesPerSec: 0
+          burstBytesPerSec: 0
       CertConfig:
         CertMode: none # Option about how to get certificate: none, file, http, tls, dns. Choose "none" will forcedly disable the tls config.
         CertDomain: "abcdefg.com" # Domain to cert
