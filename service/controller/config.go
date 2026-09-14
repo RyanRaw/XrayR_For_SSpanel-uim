@@ -42,13 +42,25 @@ type FallBackConfig struct {
 }
 
 type REALITYConfig struct {
-	Show             bool     `mapstructure:"Show"`
-	Dest             string   `mapstructure:"Dest"`
-	ProxyProtocolVer uint64   `mapstructure:"ProxyProtocolVer"`
-	ServerNames      []string `mapstructure:"ServerNames"`
-	PrivateKey       string   `mapstructure:"PrivateKey"`
-	MinClientVer     string   `mapstructure:"MinClientVer"`
-	MaxClientVer     string   `mapstructure:"MaxClientVer"`
-	MaxTimeDiff      uint64   `mapstructure:"MaxTimeDiff"`
-	ShortIds         []string `mapstructure:"ShortIds"`
+	Show                  bool          `mapstructure:"Show"`
+	Dest                  string        `mapstructure:"Dest"`
+	ProxyProtocolVer      uint64        `mapstructure:"ProxyProtocolVer"`
+	ServerNames           []string      `mapstructure:"ServerNames"`
+	PrivateKey            string        `mapstructure:"PrivateKey"`
+	MinClientVer          string        `mapstructure:"MinClientVer"`
+	MaxClientVer          string        `mapstructure:"MaxClientVer"`
+	MaxTimeDiff           uint64        `mapstructure:"MaxTimeDiff"`
+	ShortIds              []string      `mapstructure:"ShortIds"`
+	Mldsa65Seed           string        `mapstructure:"Mldsa65Seed"`
+	MasterKeyLog          string        `mapstructure:"MasterKeyLog"`
+	LimitFallbackUpload   LimitFallback `mapstructure:"LimitFallbackUpload"`
+	LimitFallbackDownload LimitFallback `mapstructure:"LimitFallbackDownload"`
+}
+
+// LimitFallback limits the traffic that fails REALITY authentication and is
+// forwarded to Dest. All zeros means no limit.
+type LimitFallback struct {
+	AfterBytes       uint64 `mapstructure:"AfterBytes"`
+	BytesPerSec      uint64 `mapstructure:"BytesPerSec"`
+	BurstBytesPerSec uint64 `mapstructure:"BurstBytesPerSec"`
 }

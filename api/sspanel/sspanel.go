@@ -799,14 +799,17 @@ func (c *APIClient) ParseSSPanelNodeInfo(nodeInfoResponse *NodeInfoResponse) (*a
 	if nodeConfig.RealityOpts != nil {
 		r := nodeConfig.RealityOpts
 		realityConfig = &api.REALITYConfig{
-			Dest:             r.Dest,
-			ProxyProtocolVer: r.ProxyProtocolVer,
-			ServerNames:      r.ServerNames,
-			PrivateKey:       r.PrivateKey,
-			MinClientVer:     r.MinClientVer,
-			MaxClientVer:     r.MaxClientVer,
-			MaxTimeDiff:      r.MaxTimeDiff,
-			ShortIds:         r.ShortIds,
+			Dest:                  r.Dest,
+			ProxyProtocolVer:      r.ProxyProtocolVer,
+			ServerNames:           r.ServerNames,
+			PrivateKey:            r.PrivateKey,
+			MinClientVer:          r.MinClientVer,
+			MaxClientVer:          r.MaxClientVer,
+			MaxTimeDiff:           r.MaxTimeDiff,
+			ShortIds:              r.ShortIds,
+			Mldsa65Seed:           r.Mldsa65Seed,
+			LimitFallbackUpload:   api.LimitFallback(r.LimitFallbackUpload),
+			LimitFallbackDownload: api.LimitFallback(r.LimitFallbackDownload),
 		}
 	}
 	// Fallback: if reality-opts not set, build realityConfig from flat custom_config fields
@@ -827,6 +830,10 @@ func (c *APIClient) ParseSSPanelNodeInfo(nodeInfoResponse *NodeInfoResponse) (*a
 				realityConfig.Dest = nodeConfig.Sni + ":443"
 			}
 		}
+		// mldsa65Seed → Mldsa65Seed
+		if realityConfig.Mldsa65Seed == "" && nodeConfig.Mldsa65Seed != "" {
+			realityConfig.Mldsa65Seed = nodeConfig.Mldsa65Seed
+		}
 	}
 
 	// Create GeneralNodeInfo
@@ -846,7 +853,7 @@ func (c *APIClient) ParseSSPanelNodeInfo(nodeInfoResponse *NodeInfoResponse) (*a
 		ServerKey:         nodeConfig.ServerKey,
 		ServiceName:       nodeConfig.Servicename,
 		Header:            nodeConfig.Header,
-		EnableREALITY:     nodeConfig.EnableREALITY || nodeConfig.EnableVless == "1" || nodeConfig.ShortId != "" || nodeConfig.Sni != "",
+		EnableREALITY:     nodeConfig.EnableREALITY,
 		REALITYConfig:     realityConfig,
 	}
 

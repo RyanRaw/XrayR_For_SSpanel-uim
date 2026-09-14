@@ -197,15 +197,18 @@ func InboundBuilder(config *Config, nodeInfo *api.NodeInfo, tag string) (*core.I
 
 			r := nodeInfo.REALITYConfig
 			streamSetting.REALITYSettings = &conf.REALITYConfig{
-				Show:         config.REALITYConfigs.Show,
-				Dest:         []byte(`"` + r.Dest + `"`),
-				Xver:         r.ProxyProtocolVer,
-				ServerNames:  r.ServerNames,
-				PrivateKey:   r.PrivateKey,
-				MinClientVer: r.MinClientVer,
-				MaxClientVer: r.MaxClientVer,
-				MaxTimeDiff:  r.MaxTimeDiff,
-				ShortIds:     r.ShortIds,
+				Show:                  config.REALITYConfigs.Show,
+				Dest:                  []byte(`"` + r.Dest + `"`),
+				Xver:                  r.ProxyProtocolVer,
+				ServerNames:           r.ServerNames,
+				PrivateKey:            r.PrivateKey,
+				MinClientVer:          r.MinClientVer,
+				MaxClientVer:          r.MaxClientVer,
+				MaxTimeDiff:           r.MaxTimeDiff,
+				ShortIds:              r.ShortIds,
+				Mldsa65Seed:           r.Mldsa65Seed,
+				LimitFallbackUpload:   conf.LimitFallback(r.LimitFallbackUpload),
+				LimitFallbackDownload: conf.LimitFallback(r.LimitFallbackDownload),
 			}
 		}
 	} else if config.EnableREALITY && config.REALITYConfigs != nil {
@@ -213,15 +216,19 @@ func InboundBuilder(config *Config, nodeInfo *api.NodeInfo, tag string) (*core.I
 		streamSetting.Security = "reality"
 
 		streamSetting.REALITYSettings = &conf.REALITYConfig{
-			Show:         config.REALITYConfigs.Show,
-			Dest:         []byte(`"` + config.REALITYConfigs.Dest + `"`),
-			Xver:         config.REALITYConfigs.ProxyProtocolVer,
-			ServerNames:  config.REALITYConfigs.ServerNames,
-			PrivateKey:   config.REALITYConfigs.PrivateKey,
-			MinClientVer: config.REALITYConfigs.MinClientVer,
-			MaxClientVer: config.REALITYConfigs.MaxClientVer,
-			MaxTimeDiff:  config.REALITYConfigs.MaxTimeDiff,
-			ShortIds:     config.REALITYConfigs.ShortIds,
+			Show:                  config.REALITYConfigs.Show,
+			Dest:                  []byte(`"` + config.REALITYConfigs.Dest + `"`),
+			Xver:                  config.REALITYConfigs.ProxyProtocolVer,
+			ServerNames:           config.REALITYConfigs.ServerNames,
+			PrivateKey:            config.REALITYConfigs.PrivateKey,
+			MinClientVer:          config.REALITYConfigs.MinClientVer,
+			MaxClientVer:          config.REALITYConfigs.MaxClientVer,
+			MaxTimeDiff:           config.REALITYConfigs.MaxTimeDiff,
+			ShortIds:              config.REALITYConfigs.ShortIds,
+			Mldsa65Seed:           config.REALITYConfigs.Mldsa65Seed,
+			MasterKeyLog:          config.REALITYConfigs.MasterKeyLog,
+			LimitFallbackUpload:   conf.LimitFallback(config.REALITYConfigs.LimitFallbackUpload),
+			LimitFallbackDownload: conf.LimitFallback(config.REALITYConfigs.LimitFallbackDownload),
 		}
 	}
 

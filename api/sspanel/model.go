@@ -37,6 +37,7 @@ type CustomConfig struct {
 	ShortId        string          `json:"shortId"`        // 兼容平铺 shortId
 	Sni            string          `json:"sni"`            // 兼容平铺 sni (server_name)
 	Dest           string          `json:"dest"`           // 兼容平铺 dest
+	Mldsa65Seed    string          `json:"mldsa65Seed"`    // 兼容平铺 mldsa65Seed
 }
 
 // UserResponse is the response of user
@@ -92,12 +93,23 @@ type IllegalItem struct {
 }
 
 type REALITYConfig struct {
-	Dest             string   `json:"dest,omitempty"`
-	ProxyProtocolVer uint64   `json:"proxy_protocol_ver,omitempty"`
-	ServerNames      []string `json:"server_names,omitempty"`
-	PrivateKey       string   `json:"private_key,omitempty"`
-	MinClientVer     string   `json:"min_client_ver,omitempty"`
-	MaxClientVer     string   `json:"max_client_ver,omitempty"`
-	MaxTimeDiff      uint64   `json:"max_time_diff,omitempty"`
-	ShortIds         []string `json:"short_ids,omitempty"`
+	Dest                  string        `json:"dest,omitempty"`
+	ProxyProtocolVer      uint64        `json:"proxy_protocol_ver,omitempty"`
+	ServerNames           []string      `json:"server_names,omitempty"`
+	PrivateKey            string        `json:"private_key,omitempty"`
+	MinClientVer          string        `json:"min_client_ver,omitempty"`
+	MaxClientVer          string        `json:"max_client_ver,omitempty"`
+	MaxTimeDiff           uint64        `json:"max_time_diff,omitempty"`
+	ShortIds              []string      `json:"short_ids,omitempty"`
+	Mldsa65Seed           string        `json:"mldsa65Seed,omitempty"`
+	LimitFallbackUpload   LimitFallback `json:"limit_fallback_upload,omitempty"`
+	LimitFallbackDownload LimitFallback `json:"limit_fallback_download,omitempty"`
+}
+
+// LimitFallback limits the traffic that fails REALITY authentication and is
+// forwarded to dest. All zeros means no limit.
+type LimitFallback struct {
+	AfterBytes       uint64 `json:"after_bytes,omitempty"`
+	BytesPerSec      uint64 `json:"bytes_per_sec,omitempty"`
+	BurstBytesPerSec uint64 `json:"burst_bytes_per_sec,omitempty"`
 }

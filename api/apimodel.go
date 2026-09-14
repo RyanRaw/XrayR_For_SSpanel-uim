@@ -122,12 +122,23 @@ type DetectResult struct {
 }
 
 type REALITYConfig struct {
-	Dest             string
-	ProxyProtocolVer uint64
-	ServerNames      []string
-	PrivateKey       string
-	MinClientVer     string
-	MaxClientVer     string
-	MaxTimeDiff      uint64
-	ShortIds         []string
+	Dest                  string
+	ProxyProtocolVer      uint64
+	ServerNames           []string
+	PrivateKey            string
+	MinClientVer          string
+	MaxClientVer          string
+	MaxTimeDiff           uint64
+	ShortIds              []string
+	Mldsa65Seed           string
+	LimitFallbackUpload   LimitFallback
+	LimitFallbackDownload LimitFallback
+}
+
+// LimitFallback limits the traffic that fails REALITY authentication and is
+// forwarded to Dest. All zeros means no limit.
+type LimitFallback struct {
+	AfterBytes       uint64
+	BytesPerSec      uint64
+	BurstBytesPerSec uint64
 }
