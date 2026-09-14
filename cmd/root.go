@@ -42,6 +42,13 @@ func init() {
 			os.Args[i] = "--config"
 		case "-version":
 			os.Args[i] = "--version"
+		case "-ip":
+			// upstream xray style: tls ping -ip <ip> <domain>
+			os.Args[i] = "--ip"
+		default:
+			if strings.HasPrefix(os.Args[i], "-ip=") {
+				os.Args[i] = "--ip=" + strings.TrimPrefix(os.Args[i], "-ip=")
+			}
 		}
 	}
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "Config file for XrayR.")
