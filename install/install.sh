@@ -24,6 +24,20 @@ log_info()    { echo -e "${green}$*${plain}" >&2; }
 log_warn()    { echo -e "${yellow}$*${plain}" >&2; }
 log_error()   { echo -e "${red}$*${plain}" >&2; }
 
+# ==================== 下载 ====================
+# 下载文件，优先 curl，其次 wget
+download_file() {
+    local url="$1" dest="$2"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsL --connect-timeout 15 --retry 3 --retry-delay 2 -o "$dest" "$url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O "$dest" "$url"
+    else
+        log_error "未找到 curl 或 wget，无法下载"
+        return 1
+    fi
+}
+
 # ==================== 前置检查 ====================
 need_root() {
     if [[ ${EUID} -ne 0 ]]; then
@@ -318,15 +332,33 @@ optimize_network() {
 
 # ==================== 安装管理脚本 ====================
 install_manager() {
-    local script_url="https://cdn.jsdelivr.net/gh/${OWNER}/${SCRIPT_REPO}@master/install/XrayR.sh"
-    if curl -fLs --connect-timeout 15 --retry 3 --retry-delay 2 -o "$MANAGER_BIN" "$script_url"; then
-        chmod +x "$MANAGER_BIN"
-        ln -sf "$MANAGER_BIN" "$MANAGER_BIN_LOWER"
-        log_info "管理脚本已安装到 ${MANAGER_BIN}"
-    else
+    local cdn_url="https://cdn.jsdelivr.net/gh/${OWNER}/${SCRIPT_REPO}@master/install/XrayR.sh"
+    local raw_url="https://raw.githubusercontent.com/${OWNER}/${SCRIPT_REPO}/master/install/XrayR.sh"
+    local tmp url ok=0
+    tmp="$(mktemp 2>/dev/null || echo "${MANAGER_BIN}.tmp")"
+
+    # 先清 jsDelivr 缓存，否则 @master 可能仍返回旧脚本
+    curl -fsL --max-time 20 \
+        "https://purge.jsdelivr.net/gh/${OWNER}/${SCRIPT_REPO}@master/install/XrayR.sh" >/dev/null 2>&1 || true
+
+    # CDN 优先，失败或内容异常时回退源站
+    for url in "$cdn_url" "$raw_url"; do
+        if download_file "$url" "$tmp" && [[ -s "$tmp" ]] && bash -n "$tmp" 2>/dev/null; then
+            ok=1
+            break
+        fi
+    done
+
+    if [[ "$ok" != "1" ]]; then
+        rm -f "$tmp"
         log_error "管理脚本下载失败！"
         exit 1
     fi
+
+    mv -f "$tmp" "$MANAGER_BIN"
+    chmod +x "$MANAGER_BIN"
+    ln -sf "$MANAGER_BIN" "$MANAGER_BIN_LOWER"
+    log_info "管理脚本已安装到 ${MANAGER_BIN}"
 }
 
 # ==================== 配置文件复制 ====================
@@ -368,7 +400,7 @@ ConnectionConfig:
   DownlinkOnly: 4 # Time limit when the connection is closed after the uplink is closed, Second
   BufferSize: 64 # The internal cache size of each connection, kB
 Nodes:
-  - PanelType: "SSpanel" # Panel type: SSpanel, NewV2board, PMpanel, Proxypanel, V2RaySocks, GoV2Panel
+  - PanelType: "SSpanel" # Panel type: SSpanel
     ApiConfig:
       ApiHost: "https://xxx.icu"
       ApiKey: "abcdefg"

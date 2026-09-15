@@ -13,6 +13,12 @@ CONFIG_DIR="/etc/XrayR"
 SERVICE_FILE="/etc/systemd/system/XrayR.service"
 OPENRC_FILE="/etc/init.d/XrayR"
 
+# 脚本下载源（jsDelivr 加速 / 源站直连备用）
+SCRIPT_OWNER="RyanRaw"
+SCRIPT_REPO="XrayR_For_SSpanel-uim"
+SCRIPT_CDN_BASE="https://cdn.jsdelivr.net/gh/${SCRIPT_OWNER}/${SCRIPT_REPO}@master"
+SCRIPT_RAW_BASE="https://raw.githubusercontent.com/${SCRIPT_OWNER}/${SCRIPT_REPO}/master"
+
 # 检测系统类型（Alpine 使用 OpenRC，其余使用 systemd）
 if [[ -f /etc/os-release ]]; then
     . /etc/os-release 2>/dev/null
@@ -26,6 +32,27 @@ fi
 log_info()  { echo -e "${green}$*${plain}"; }
 log_warn()  { echo -e "${yellow}$*${plain}"; }
 log_error() { echo -e "${red}$*${plain}" >&2; }
+
+# ==================== 下载 ====================
+# 下载文件，优先 curl，其次 wget
+download_file() {
+    local url="$1" dest="$2"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsL --connect-timeout 15 --retry 3 --retry-delay 2 -o "$dest" "$url"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O "$dest" "$url"
+    else
+        log_error "未找到 curl 或 wget，无法下载"
+        return 1
+    fi
+}
+
+# jsDelivr 对 @master 有缓存，先请求 purge 接口强制刷新，避免拉到旧脚本
+purge_jsdelivr() {
+    command -v curl >/dev/null 2>&1 || return 0
+    curl -fsL --max-time 20 \
+        "https://purge.jsdelivr.net/gh/${SCRIPT_OWNER}/${SCRIPT_REPO}@master/$1" >/dev/null 2>&1 || true
+}
 
 # ==================== 前置检查 ====================
 need_root() {
@@ -272,12 +299,34 @@ install_bbr() {
 }
 
 update_shell() {
-    local self
+    local self tmp url ok=0
     self="$(readlink -f "$0")"
-    wget -O "$self" -N --no-check-certificate \
-        https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/XrayR.sh
+    tmp="$(mktemp 2>/dev/null || echo "/tmp/XrayR.sh.$$")"
+
+    log_info "正在拉取最新管理脚本..."
+    # 先清 jsDelivr 缓存，否则 @master 可能仍返回旧内容
+    purge_jsdelivr "install/XrayR.sh"
+
+    # CDN 优先，失败或内容异常时回退源站
+    for url in "${SCRIPT_CDN_BASE}/install/XrayR.sh" "${SCRIPT_RAW_BASE}/install/XrayR.sh"; do
+        if download_file "$url" "$tmp" && [[ -s "$tmp" ]] && bash -n "$tmp" 2>/dev/null; then
+            ok=1
+            break
+        fi
+    done
+
+    if [[ "$ok" != "1" ]]; then
+        rm -f "$tmp"
+        log_error "下载管理脚本失败，请检查网络后重试"
+        return 1
+    fi
+
+    cp -f "$self" "${self}.bak" 2>/dev/null || true
+    cat "$tmp" > "$self"
+    rm -f "$tmp"
     chmod +x "$self"
-    log_info "升级脚本成功，请重新运行脚本" && exit 0
+    log_info "升级脚本成功（旧版已备份为 ${self}.bak），请重新运行脚本"
+    exit 0
 }
 
 do_uninstall() {
