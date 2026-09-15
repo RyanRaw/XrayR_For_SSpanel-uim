@@ -21,22 +21,6 @@
   * [对接Trojan (已废弃)](dui-jie-sspanel/sspanel/trojan.md)
   * [对接Shadowsocks (已废弃)](dui-jie-sspanel/sspanel/shadowsocks.md)
 
-## 对接V2board
-
-* [基本对接配置](dui-jie-v2board/v2board.md)
-
-## 对接PMPanel
-
-* [基本对接配置](dui-jie-pmpanel/ji-ben-dui-jie-pei-zhi.md)
-
-## 对接ProxyPanel
-
-* [基本对接配置](dui-jie-proxypanel/ji-ben-dui-jie-pei-zhi.md)
-
-## 对接WHMCS (V2RaySocks)
-
-* [基本对接配置](dui-jie-v2raysocks/v2raysocks.md)
-  
 ## 功能说明
 
 * [限速功能说明](gong-neng-shuo-ming/speedlimit.md)

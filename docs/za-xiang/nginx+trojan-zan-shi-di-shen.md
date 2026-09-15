@@ -113,7 +113,7 @@ CertMode: none
 
 ```text
   -
-    PanelType: "SSpanel" # Panel type: SSpanel, V2board, PMpanel
+    PanelType: "SSpanel" # Panel type: SSpanel
     ApiConfig:
       ApiHost: "https://xxx.com"
       ApiKey: "123"

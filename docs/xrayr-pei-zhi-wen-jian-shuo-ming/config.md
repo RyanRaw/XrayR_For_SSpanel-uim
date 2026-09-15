@@ -24,7 +24,7 @@ ConnectionConfig:
   BufferSize: 64 # The internal cache size of each connection, kB 
 Nodes:
   -
-    PanelType: "SSpanel" # Panel type: SSpanel, NewV2board, V2board, PMpanel, Proxypanel
+    PanelType: "SSpanel" # Panel type: SSpanel
     ApiConfig:
       ApiHost: "http://127.0.0.1:667"
       ApiKey: "123"
@@ -73,30 +73,6 @@ Nodes:
         CertDomain: "node1.test.com" # Domain to cert
         CertFile: /etc/XrayR/cert/node1.test.com.cert # Provided if the CertMode is file
         KeyFile: /etc/XrayR/cert/node1.test.com.key
-        Provider: alidns # DNS cert provider, Get the full support list here: https://go-acme.github.io/lego/dns/
-        Email: test@me.com
-        DNSEnv: # DNS ENV option used by DNS provider
-          ALICLOUD_ACCESS_KEY: aaa
-          ALICLOUD_SECRET_KEY: bbb
-  -
-    PanelType: "V2board" # Panel type: SSpanel, V2board
-    ApiConfig:
-      ApiHost: "http://V2board.com"
-      ApiKey: "123"
-      NodeID: 42
-      NodeType: Trojan # Node type: V2ray, Shadowsocks, Trojan
-      Timeout: 30 # Timeout for the api request
-      EnableVless: false # Enable Vless for V2ray Type, Prefer remote configuration
-      EnableXTLS: false # Enable XTLS for V2ray and Trojan， Prefer remote configuration
-    ControllerConfig:
-      ListenIP: 0.0.0.0 # IP address you want to listen
-      UpdatePeriodic: 60 # Time to update the nodeinfo, how many sec.
-      EnableDNS: false # Enable custom DNS config, Please ensure that you set the dns.json well
-      CertConfig:
-        CertMode: dns # Option about how to get certificate: none, file, http, dns. Choose "none" will forcedly disable the tls config.
-        CertDomain: "node2.test.com" # Domain to cert
-        CertFile: /etc/XrayR/cert/node2.test.com.cert # Provided if the CertMode is file
-        KeyFile: /etc/XrayR/cert/node2.test.com.key
         Provider: alidns # DNS cert provider, Get the full support list here: https://go-acme.github.io/lego/dns/
         Email: test@me.com
         DNSEnv: # DNS ENV option used by DNS provider
@@ -218,7 +194,7 @@ ConnectionConfig:
 ```yaml
 Nodes:
   -
-    PanelType: "SSpanel" # Panel type: SSpanel, V2board, PMpanel
+    PanelType: "SSpanel" # Panel type: SSpanel
     ApiConfig:
       ApiHost: "http://127.0.0.1:667"
       ApiKey: "123"
@@ -256,44 +232,17 @@ Nodes:
         DNSEnv: # DNS ENV option used by DNS provider
           ALICLOUD_ACCESS_KEY: aaa
           ALICLOUD_SECRET_KEY: bbb
-  -
-    PanelType: "V2board" # Panel type: SSpanel, V2board, PMpanel
-    ApiConfig:
-      ApiHost: "http://V2board.com"
-      ApiKey: "123"
-      NodeID: 42
-      NodeType: Trojan # Node type: V2ray, Shadowsocks, Trojan
-      Timeout: 30 # Timeout for the api request
-      EnableVless: false # Enable Vless for V2ray Type
-      EnableXTLS: false # Enable XTLS for V2ray and Trojan
-      SpeedLimit: 0 # Local settings will replace remote settings, 0 means disable
-      DeviceLimit: 0 # Local settings will replace remote settings, 0 means disable
-      RuleListPath: # /etc/XrayR/rulelist Path to local rulelist file
-    ControllerConfig:
-      ListenIP: 0.0.0.0 # IP address you want to listen
-      UpdatePeriodic: 60 # Time to update the nodeinfo, how many sec.
-      EnableDNS: false # Enable custom DNS config, Please ensure that you set the dns.json well
-      CertConfig:
-        CertMode: dns # Option about how to get certificate: none, file, http, dns. Choose "none" will forcedly disable the tls config.
-        CertDomain: "node2.test.com" # Domain to cert
-        CertFile: /etc/XrayR/cert/node2.test.com.cert # Provided if the CertMode is file
-        KeyFile: /etc/XrayR/cert/node2.test.com.key
-        Provider: alidns # DNS cert provider, Get the full support list here: https://go-acme.github.io/lego/dns/
-        Email: test@me.com
-        DNSEnv: # DNS ENV option used by DNS provider
-          ALICLOUD_ACCESS_KEY: aaa
-          ALICLOUD_SECRET_KEY: bbb
 ```
 
 #### 面板选择
 
 ```yaml
-PanelType: "V2board" # Panel type: SSpanel, V2board, PMpanel, Proxypanel
+PanelType: "SSpanel" # Panel type: SSpanel
 ```
 
-| 参数        | 选项                                                                    | 说明             |
-| ----------- | ----------------------------------------------------------------------- | ---------------- |
-| `PanelType` | `SSPanel`, `NewV2board`, `V2board`,`PMpanel`,`Proxypanel`, `V2RaySocks` | 对接前端面板类型 |
+| 参数        | 选项      | 说明             |
+| ----------- | --------- | ---------------- |
+| `PanelType` | `SSPanel` | 对接前端面板类型 |
 
 #### 面板对接配置
 
