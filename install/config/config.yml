@@ -53,9 +53,9 @@ Nodes:
           Path: # HTTP PATH, Empty for any
           Dest: 80 # Required, Destination of fallback, check https://xtls.github.io/config/features/fallback.html for details.
           ProxyProtocolVer: 0 # Send PROXY protocol version, 0 for disable
-      DisableLocalREALITYConfig: false  # disable local reality config
+      DisableLocalREALITYConfig: false  # true: REALITY 参数改由面板下发，面板未下发的字段回退到下方 REALITYConfigs 对应项
       EnableREALITY: true # Enable REALITY
-      REALITYConfigs:
+      REALITYConfigs: # 本地 REALITY 配置；DisableLocalREALITYConfig 为 true 时作为面板未下发字段的默认值
         Show: true # Show REALITY debug
         Dest: www.abcdefg.org:443 # Required, Same as fallback
         ProxyProtocolVer: 0 # Send PROXY protocol version, 0 for disable
@@ -65,11 +65,10 @@ Nodes:
         MinClientVer: # Optional, minimum version of Xray client, format is x.y.z.
         MaxClientVer: # Optional, maximum version of Xray client, format is x.y.z.
         MaxTimeDiff: 0 # Optional, maximum allowed time difference, unit is in milliseconds.
-        ShortIds: # Required, list of available shortIds for the client, can be used to differentiate between different clients.
+        ShortIds: # 留空或整块省略时使用内置默认值 ["", "0123456789abcdef"]；xray 要求此项非空
           - ""
           - 0123456789abcdef
         mldsa65Seed: # Optional, ML-DSA-65 seed for REALITY post-quantum signature, must differ from PrivateKey. Generate with: XrayR mldsa65
-        masterKeyLog: # Optional, write TLS master keys to this file for debugging (e.g. with Wireshark)
         limitFallbackUpload: # Optional, rate limit the traffic that fails REALITY auth and is forwarded to Dest, 0 means no limit
           afterBytes: 0 # Start limiting after this many bytes have been forwarded
           bytesPerSec: 0 # Limit speed, bytes per second

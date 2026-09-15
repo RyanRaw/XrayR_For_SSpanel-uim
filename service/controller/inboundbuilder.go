@@ -19,6 +19,86 @@ import (
 	"github.com/XrayR-project/XrayR/common/mylego"
 )
 
+// defaultREALITYShortIds 是面板与本地 config.yml 都没提供 shortIds 时的兜底值。
+// xray-core 的 REALITY 要求 shortIds 非空（否则报 `empty "shortIds"` 拒绝构建）。
+// 空 shortId 是最常见的客户端写法，另一个沿用配置模板里的示例值。
+var defaultREALITYShortIds = []string{"", "0123456789abcdef"}
+
+// withDefaultShortIds 兜底 shortIds，避免 REALITY 因该项为空而构建失败。
+func withDefaultShortIds(settings *conf.REALITYConfig) *conf.REALITYConfig {
+	if len(settings.ShortIds) == 0 {
+		settings.ShortIds = defaultREALITYShortIds
+	}
+	return settings
+}
+
+// buildREALITYSettings 合并 REALITY 配置并转换为 xray-core 的配置结构。
+// local 为 config.yml 中的 REALITYConfigs（作为默认值，可为 nil）；node 为面板下发的配置（优先级更高，可为 nil）。
+// 取值优先级：面板已下发的字段 → 面板平铺字段（已在 api 层合并进 node）→ local 默认值。
+func buildREALITYSettings(local *REALITYConfig, node *api.REALITYConfig) *conf.REALITYConfig {
+	settings := &conf.REALITYConfig{}
+
+	// 先铺上本地默认值
+	if local != nil {
+		settings.Show = local.Show
+		settings.Dest = []byte(`"` + local.Dest + `"`)
+		settings.Xver = local.ProxyProtocolVer
+		settings.ServerNames = local.ServerNames
+		settings.PrivateKey = local.PrivateKey
+		settings.MinClientVer = local.MinClientVer
+		settings.MaxClientVer = local.MaxClientVer
+		settings.MaxTimeDiff = local.MaxTimeDiff
+		settings.ShortIds = local.ShortIds
+		settings.Mldsa65Seed = local.Mldsa65Seed
+		settings.LimitFallbackUpload = conf.LimitFallback(local.LimitFallbackUpload)
+		settings.LimitFallbackDownload = conf.LimitFallback(local.LimitFallbackDownload)
+	}
+
+	if node == nil {
+		return withDefaultShortIds(settings)
+	}
+
+	// 面板已下发的字段覆盖默认值，未下发的保持默认值
+	if node.Show {
+		settings.Show = true
+	}
+	if node.Dest != "" {
+		settings.Dest = []byte(`"` + node.Dest + `"`)
+	}
+	if node.ProxyProtocolVer != 0 {
+		settings.Xver = node.ProxyProtocolVer
+	}
+	if len(node.ServerNames) > 0 {
+		settings.ServerNames = node.ServerNames
+	}
+	if node.PrivateKey != "" {
+		settings.PrivateKey = node.PrivateKey
+	}
+	if node.MinClientVer != "" {
+		settings.MinClientVer = node.MinClientVer
+	}
+	if node.MaxClientVer != "" {
+		settings.MaxClientVer = node.MaxClientVer
+	}
+	if node.MaxTimeDiff != 0 {
+		settings.MaxTimeDiff = node.MaxTimeDiff
+	}
+	if len(node.ShortIds) > 0 {
+		settings.ShortIds = node.ShortIds
+	}
+	if node.Mldsa65Seed != "" {
+		settings.Mldsa65Seed = node.Mldsa65Seed
+	}
+	if node.LimitFallbackUpload != (api.LimitFallback{}) {
+		settings.LimitFallbackUpload = conf.LimitFallback(node.LimitFallbackUpload)
+	}
+	if node.LimitFallbackDownload != (api.LimitFallback{}) {
+		settings.LimitFallbackDownload = conf.LimitFallback(node.LimitFallbackDownload)
+	}
+
+	return withDefaultShortIds(settings)
+}
+
 // InboundBuilder build Inbound config for different protocol
 func InboundBuilder(config *Config, nodeInfo *api.NodeInfo, tag string) (*core.InboundHandlerConfig, error) {
 	inboundDetourConfig := &conf.InboundDetourConfig{}
@@ -180,9 +260,11 @@ func InboundBuilder(config *Config, nodeInfo *api.NodeInfo, tag string) (*core.I
 		}
 		streamSetting.HTTPUPGRADESettings = httpupgradeSettings
 	case "splithttp", "xhttp":
+		// mode: auto / packet-up / stream-up / stream-one；留空时由 xray-core 取默认值 auto
 		splithttpSetting := &conf.SplitHTTPConfig{
 			Path: nodeInfo.Path,
 			Host: nodeInfo.Host,
+			Mode: nodeInfo.Mode,
 		}
 		streamSetting.SplitHTTPSettings = splithttpSetting
 	}
@@ -191,45 +273,17 @@ func InboundBuilder(config *Config, nodeInfo *api.NodeInfo, tag string) (*core.I
 	// Build TLS and REALITY settings
 	var isREALITY bool
 	if config.DisableLocalREALITYConfig {
-		if nodeInfo.REALITYConfig != nil && nodeInfo.EnableREALITY {
+		// 面板下发 REALITY：面板已下发的字段优先，未下发的回退到本地 REALITYConfigs 默认值
+		if nodeInfo.EnableREALITY {
 			isREALITY = true
 			streamSetting.Security = "reality"
-
-			r := nodeInfo.REALITYConfig
-			streamSetting.REALITYSettings = &conf.REALITYConfig{
-				Show:                  config.REALITYConfigs.Show,
-				Dest:                  []byte(`"` + r.Dest + `"`),
-				Xver:                  r.ProxyProtocolVer,
-				ServerNames:           r.ServerNames,
-				PrivateKey:            r.PrivateKey,
-				MinClientVer:          r.MinClientVer,
-				MaxClientVer:          r.MaxClientVer,
-				MaxTimeDiff:           r.MaxTimeDiff,
-				ShortIds:              r.ShortIds,
-				Mldsa65Seed:           r.Mldsa65Seed,
-				LimitFallbackUpload:   conf.LimitFallback(r.LimitFallbackUpload),
-				LimitFallbackDownload: conf.LimitFallback(r.LimitFallbackDownload),
-			}
+			streamSetting.REALITYSettings = buildREALITYSettings(config.REALITYConfigs, nodeInfo.REALITYConfig)
 		}
 	} else if config.EnableREALITY && config.REALITYConfigs != nil {
+		// 本地 REALITY：完全使用 config.yml 中的 REALITYConfigs
 		isREALITY = true
 		streamSetting.Security = "reality"
-
-		streamSetting.REALITYSettings = &conf.REALITYConfig{
-			Show:                  config.REALITYConfigs.Show,
-			Dest:                  []byte(`"` + config.REALITYConfigs.Dest + `"`),
-			Xver:                  config.REALITYConfigs.ProxyProtocolVer,
-			ServerNames:           config.REALITYConfigs.ServerNames,
-			PrivateKey:            config.REALITYConfigs.PrivateKey,
-			MinClientVer:          config.REALITYConfigs.MinClientVer,
-			MaxClientVer:          config.REALITYConfigs.MaxClientVer,
-			MaxTimeDiff:           config.REALITYConfigs.MaxTimeDiff,
-			ShortIds:              config.REALITYConfigs.ShortIds,
-			Mldsa65Seed:           config.REALITYConfigs.Mldsa65Seed,
-			MasterKeyLog:          config.REALITYConfigs.MasterKeyLog,
-			LimitFallbackUpload:   conf.LimitFallback(config.REALITYConfigs.LimitFallbackUpload),
-			LimitFallbackDownload: conf.LimitFallback(config.REALITYConfigs.LimitFallbackDownload),
-		}
+		streamSetting.REALITYSettings = buildREALITYSettings(config.REALITYConfigs, nil)
 	}
 
 	if !isREALITY && nodeInfo.EnableTLS && config.CertConfig.CertMode != "none" {

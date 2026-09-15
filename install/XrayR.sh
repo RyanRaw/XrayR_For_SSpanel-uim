@@ -298,6 +298,37 @@ install_bbr() {
     bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh) optimize
 }
 
+# ==================== 密钥生成 ====================
+do_x25519() {
+    local key
+    echo "直接回车随机生成；也可粘贴已有私钥，反推出对应的公钥。"
+    read -p "私钥 (base64.RawURLEncoding, 可留空): " key
+    echo ""
+    if [[ -n "$key" ]]; then
+        "$INSTALL_DIR/XrayR" x25519 -i "$key" || return 1
+    else
+        "$INSTALL_DIR/XrayR" x25519 || return 1
+    fi
+    echo ""
+    echo -e "  ${green}Private key${plain} → 服务端 privateKey / config.yml 的 REALITYConfigs.PrivateKey"
+    echo -e "  ${green}Public key${plain}  → 客户端 pbk / publicKey"
+}
+
+do_mldsa65() {
+    local seed
+    echo "直接回车随机生成；也可粘贴已有 seed，反推出对应的 Verify。"
+    read -p "Seed (base64.RawURLEncoding, 可留空): " seed
+    echo ""
+    if [[ -n "$seed" ]]; then
+        "$INSTALL_DIR/XrayR" mldsa65 -i "$seed" || return 1
+    else
+        "$INSTALL_DIR/XrayR" mldsa65 || return 1
+    fi
+    echo ""
+    echo -e "  ${green}Seed${plain}   → 服务端 mldsa65Seed（必须与 privateKey 不同）"
+    echo -e "  ${green}Verify${plain} → 客户端 mldsa65Verify / pqv"
+}
+
 update_shell() {
     local self tmp url ok=0
     self="$(readlink -f "$0")"
@@ -419,9 +450,12 @@ show_menu() {
  ${green}11.${plain} 应用网络优化 (原生 BBR/fq)
  ${green}12.${plain} 查看 XrayR 版本
  ${green}13.${plain} 升级维护脚本
+————————————————
+ ${green}14.${plain} 生成 x25519 密钥对 (REALITY)
+ ${green}15.${plain} 生成 ML-DSA-65 密钥对 (REALITY 后量子)
 "
     show_status
-    echo && read -p "请输入选择 [0-13]: " num
+    echo && read -p "请输入选择 [0-15]: " num
 
     case "${num}" in
         0) edit_config; before_show_menu ;;
@@ -438,7 +472,9 @@ show_menu() {
         11) install_bbr; before_show_menu ;;
         12) show_xrayr_version; before_show_menu ;;
         13) update_shell ;;
-        *) echo -e "${red}请输入正确的数字 [0-13]${plain}" && before_show_menu ;;
+        14) check_installed && do_x25519; before_show_menu ;;
+        15) check_installed && do_mldsa65; before_show_menu ;;
+        *) echo -e "${red}请输入正确的数字 [0-15]${plain}" && before_show_menu ;;
     esac
 }
 

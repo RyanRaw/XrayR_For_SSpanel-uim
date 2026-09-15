@@ -52,7 +52,6 @@ type REALITYConfig struct {
 	MaxTimeDiff           uint64        `mapstructure:"MaxTimeDiff"`
 	ShortIds              []string      `mapstructure:"ShortIds"`
 	Mldsa65Seed           string        `mapstructure:"Mldsa65Seed"`
-	MasterKeyLog          string        `mapstructure:"MasterKeyLog"`
 	LimitFallbackUpload   LimitFallback `mapstructure:"LimitFallbackUpload"`
 	LimitFallbackDownload LimitFallback `mapstructure:"LimitFallbackDownload"`
 }

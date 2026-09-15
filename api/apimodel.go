@@ -48,6 +48,7 @@ type NodeInfo struct {
 	FakeType            string
 	Host                string
 	Path                string
+	Mode                string
 	EnableTLS           bool
 	EnableSniffing      bool
 	RouteOnly           bool
@@ -122,6 +123,7 @@ type DetectResult struct {
 }
 
 type REALITYConfig struct {
+	Show                  bool
 	Dest                  string
 	ProxyProtocolVer      uint64
 	ServerNames           []string

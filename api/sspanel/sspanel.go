@@ -794,47 +794,8 @@ func (c *APIClient) ParseSSPanelNodeInfo(nodeInfoResponse *NodeInfoResponse) (*a
 		}
 	}
 
-	// parse reality config
-	realityConfig := new(api.REALITYConfig)
-	if nodeConfig.RealityOpts != nil {
-		r := nodeConfig.RealityOpts
-		realityConfig = &api.REALITYConfig{
-			Dest:                  r.Dest,
-			ProxyProtocolVer:      r.ProxyProtocolVer,
-			ServerNames:           r.ServerNames,
-			PrivateKey:            r.PrivateKey,
-			MinClientVer:          r.MinClientVer,
-			MaxClientVer:          r.MaxClientVer,
-			MaxTimeDiff:           r.MaxTimeDiff,
-			ShortIds:              r.ShortIds,
-			Mldsa65Seed:           r.Mldsa65Seed,
-			LimitFallbackUpload:   api.LimitFallback(r.LimitFallbackUpload),
-			LimitFallbackDownload: api.LimitFallback(r.LimitFallbackDownload),
-		}
-	}
-	// Fallback: if reality-opts not set, build realityConfig from flat custom_config fields
-	if nodeConfig.RealityOpts == nil {
-		// sni → ServerNames
-		if len(realityConfig.ServerNames) == 0 && nodeConfig.Sni != "" {
-			realityConfig.ServerNames = []string{nodeConfig.Sni}
-		}
-		// shortId → ShortIds
-		if len(realityConfig.ShortIds) == 0 && nodeConfig.ShortId != "" {
-			realityConfig.ShortIds = []string{nodeConfig.ShortId}
-		}
-		// dest → Dest (fallback to sni:443 if no dest provided)
-		if realityConfig.Dest == "" {
-			if nodeConfig.Dest != "" {
-				realityConfig.Dest = nodeConfig.Dest
-			} else if nodeConfig.Sni != "" {
-				realityConfig.Dest = nodeConfig.Sni + ":443"
-			}
-		}
-		// mldsa65Seed → Mldsa65Seed
-		if realityConfig.Mldsa65Seed == "" && nodeConfig.Mldsa65Seed != "" {
-			realityConfig.Mldsa65Seed = nodeConfig.Mldsa65Seed
-		}
-	}
+	// parse reality config：reality-opts 优先，未下发的字段回退到 custom_config 平铺字段
+	realityConfig := parseREALITYConfig(nodeConfig)
 
 	// Create GeneralNodeInfo
 	nodeInfo := &api.NodeInfo{
@@ -846,6 +807,7 @@ func (c *APIClient) ParseSSPanelNodeInfo(nodeInfoResponse *NodeInfoResponse) (*a
 		TransportProtocol: transportProtocol,
 		Host:              nodeConfig.Host,
 		Path:              nodeConfig.Path,
+		Mode:              nodeConfig.Mode,
 		EnableTLS:         enableTLS,
 		EnableVless:       enableVless,
 		VlessFlow:         nodeConfig.Flow,
@@ -858,6 +820,80 @@ func (c *APIClient) ParseSSPanelNodeInfo(nodeInfoResponse *NodeInfoResponse) (*a
 	}
 
 	return nodeInfo, nil
+}
+
+// parseREALITYConfig 合并面板下发的 REALITY 配置：
+// reality-opts 中已下发的字段优先，未下发的字段回退到 custom_config 的平铺字段。
+// 两者都没有时保持零值，由 controller 层再回退到本地 config.yml 的 REALITYConfigs 默认值。
+func parseREALITYConfig(nodeConfig *CustomConfig) *api.REALITYConfig {
+	r := &api.REALITYConfig{}
+
+	if o := nodeConfig.RealityOpts; o != nil {
+		r.Show = o.Show
+		r.Dest = o.Dest
+		r.ProxyProtocolVer = o.ProxyProtocolVer
+		r.ServerNames = o.ServerNames
+		r.PrivateKey = o.PrivateKey
+		r.MinClientVer = o.MinClientVer
+		r.MaxClientVer = o.MaxClientVer
+		r.MaxTimeDiff = o.MaxTimeDiff
+		r.ShortIds = o.ShortIds
+		r.Mldsa65Seed = o.Mldsa65Seed
+		r.LimitFallbackUpload = api.LimitFallback(o.LimitFallbackUpload)
+		r.LimitFallbackDownload = api.LimitFallback(o.LimitFallbackDownload)
+	}
+
+	// 平铺字段只填补 reality-opts 未下发的部分
+	if !r.Show && nodeConfig.Show {
+		r.Show = true
+	}
+	if r.Dest == "" {
+		if nodeConfig.Dest != "" {
+			r.Dest = nodeConfig.Dest
+		} else if nodeConfig.Sni != "" {
+			r.Dest = nodeConfig.Sni + ":443"
+		}
+	}
+	if len(r.ServerNames) == 0 {
+		if len(nodeConfig.ServerNames) > 0 {
+			r.ServerNames = nodeConfig.ServerNames
+		} else if nodeConfig.Sni != "" {
+			r.ServerNames = []string{nodeConfig.Sni}
+		}
+	}
+	if len(r.ShortIds) == 0 {
+		if len(nodeConfig.ShortIds) > 0 {
+			r.ShortIds = nodeConfig.ShortIds
+		} else if nodeConfig.ShortId != "" {
+			r.ShortIds = []string{nodeConfig.ShortId}
+		}
+	}
+	if r.PrivateKey == "" {
+		r.PrivateKey = nodeConfig.PrivateKey
+	}
+	if r.ProxyProtocolVer == 0 {
+		r.ProxyProtocolVer = nodeConfig.ProxyProtocolVer
+	}
+	if r.MinClientVer == "" {
+		r.MinClientVer = nodeConfig.MinClientVer
+	}
+	if r.MaxClientVer == "" {
+		r.MaxClientVer = nodeConfig.MaxClientVer
+	}
+	if r.MaxTimeDiff == 0 {
+		r.MaxTimeDiff = nodeConfig.MaxTimeDiff
+	}
+	if r.Mldsa65Seed == "" {
+		r.Mldsa65Seed = nodeConfig.Mldsa65Seed
+	}
+	if r.LimitFallbackUpload == (api.LimitFallback{}) {
+		r.LimitFallbackUpload = api.LimitFallback(nodeConfig.LimitFallbackUpload)
+	}
+	if r.LimitFallbackDownload == (api.LimitFallback{}) {
+		r.LimitFallbackDownload = api.LimitFallback(nodeConfig.LimitFallbackDownload)
+	}
+
+	return r
 }
 
 // compareVersion, version1 > version2 return 1, version1 < version2 return -1, 0 means equal
