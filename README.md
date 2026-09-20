@@ -34,6 +34,39 @@ A Xray backend framework that can easily support many panels.
 * 配置简单明了。
 * 修改配置自动重启实例。
 * 方便编译和升级，可以快速更新核心版本， 支持Xray-core新特性。
+* 支持 REALITY、XHTTP，以及后量子特性（X25519MLKEM768、ML-DSA-65）。
+
+## 传输与加密特性
+
+### REALITY
+
+* 支持 `security: reality`（VLESS / Trojan）。服务端参数**可由面板下发**，也支持写在本地 `config.yml` 的 `REALITYConfigs`。
+* 取值优先级：面板 `reality-opts` → `reality-opts.xxx` 点号键 → 平铺 `snake_case` → 平铺 `camelCase` → 本地 `REALITYConfigs` → 内置默认值。面板只下发部分字段时，其余自动回退。
+* 兼容各面板不一致的写法，例如 `"enable_reality": "true"`（字符串）、`"reality-opts.private_key"`（点号键）、`private_key`（平铺 snake_case）。
+* `privateKey` 解码后须为 32 字节；`dest` 未下发时用 `sni + ":443"`；`shortIds` 未下发时使用内置默认值 `["", "0123456789abcdef"]`（xray 要求该项非空）。
+
+### XHTTP
+
+* 支持 `network: xhttp`（等同 `splithttp`），`path`、`host`、`mode` 均可由面板下发。
+* `mode` 支持 `auto` / `packet-up` / `stream-up` / `stream-one`，留空时使用 xray 默认的 `auto`。
+* 服务端 `host` 留空即不校验 Host 头；非空时与请求 Host 精确匹配（大小写不敏感、忽略端口）。REALITY 场景建议留空或与 SNI 一致。
+
+### X25519MLKEM768（后量子密钥交换）
+
+* REALITY 的 TLS 1.3 握手支持 X25519MLKEM768 混合后量子密钥交换，用于抗「先存后破」（harvest now, decrypt later）。
+* **服务端自动支持，无需任何配置**；是否协商由客户端 ClientHello（uTLS 指纹）决定，服务端跟随。
+* 在客户端开启 REALITY 的 `show` 可确认是否生效，日志会打印：
+  `REALITY localAddr: ... is using X25519MLKEM768 for TLS' communication: true`
+
+### ML-DSA-65（后量子签名）
+
+* REALITY 支持用 ML-DSA-65 对服务端证书做额外签名校验，用于抵抗未来量子计算机伪造 REALITY 认证。
+* 服务端使用 `mldsa65Seed`，客户端使用配对的 `mldsa65Verify`。
+* `mldsa65Seed` 由 `XrayR mldsa65` 生成（32 字节 `base64.RawURLEncoding`），且**必须与 `privateKey` 不同**，否则 xray 拒绝启动。
+* 客户端未配置 `mldsa65Verify` 时连接仍可建立，只是不做额外校验。
+* 在客户端开启 REALITY 的 `show` 可确认是否生效，日志会打印：
+  `REALITY localAddr: ... is using ML-DSA-65 for cert's extra verification: true`
+* 管理脚本菜单 `14` / `15` 可直接生成 x25519 与 ML-DSA-65 密钥对（回车随机生成，或粘贴已有私钥 / seed 反推另一半）。
 
 ## 功能介绍
 

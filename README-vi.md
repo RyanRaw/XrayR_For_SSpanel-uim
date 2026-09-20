@@ -36,6 +36,39 @@ Dự án này chỉ là học tập và phát triển và bảo trì cá nhân c
 * Cấu hình đơn giản và rõ ràng.
 * Sửa đổi phiên bản khởi động lại tự động.
 * Dễ dàng biên dịch và nâng cấp, bạn có thể nhanh chóng cập nhật phiên bản cốt lõi và hỗ trợ các tính năng mới của Xray-Core.
+* Hỗ trợ REALITY, XHTTP và các tính năng hậu lượng tử (X25519MLKEM768, ML-DSA-65).
+
+## Giao thức truyền tải và mã hóa
+
+### REALITY
+
+* Hỗ trợ `security: reality` (VLESS / Trojan). Các tham số phía máy chủ **có thể được panel gửi xuống**, hoặc ghi cục bộ trong `REALITYConfigs` của `config.yml`.
+* Thứ tự ưu tiên: panel `reality-opts` → khóa dạng chấm `reality-opts.xxx` → `snake_case` phẳng → `camelCase` phẳng → `REALITYConfigs` cục bộ → giá trị mặc định có sẵn. Trường nào panel không gửi sẽ tự động được thay thế.
+* Tương thích với nhiều cách viết khác nhau của panel, ví dụ `"enable_reality": "true"` (chuỗi), `"reality-opts.private_key"` (khóa dạng chấm), `private_key` (snake_case phẳng).
+* `privateKey` phải giải mã thành 32 byte; nếu không có `dest` sẽ dùng `sni + ":443"`; nếu không có `shortIds` sẽ dùng giá trị mặc định `["", "0123456789abcdef"]` (xray yêu cầu trường này không được rỗng).
+
+### XHTTP
+
+* Hỗ trợ `network: xhttp` (tương đương `splithttp`); `path`, `host`, `mode` đều có thể do panel gửi xuống.
+* `mode` hỗ trợ `auto` / `packet-up` / `stream-up` / `stream-one`; nếu để trống sẽ dùng mặc định `auto` của xray.
+* `host` phía máy chủ để trống thì không kiểm tra Host header; nếu có giá trị thì phải khớp chính xác với Host của request (không phân biệt hoa thường, bỏ qua cổng). Với REALITY nên để trống hoặc bằng SNI.
+
+### X25519MLKEM768 (trao đổi khóa hậu lượng tử)
+
+* Bắt tay TLS 1.3 của REALITY hỗ trợ trao đổi khóa hậu lượng tử lai X25519MLKEM768, chống lại kiểu tấn công "thu thập trước, giải mã sau".
+* **Máy chủ hỗ trợ tự động, không cần cấu hình**; việc có thương lượng hay không do ClientHello (vân tay uTLS) của client quyết định, máy chủ đi theo.
+* Bật `show` ở phía client để xác nhận — log sẽ in:
+  `REALITY localAddr: ... is using X25519MLKEM768 for TLS' communication: true`
+
+### ML-DSA-65 (chữ ký hậu lượng tử)
+
+* REALITY có thể dùng ML-DSA-65 để kiểm tra chữ ký bổ sung cho chứng chỉ máy chủ, chống lại việc máy tính lượng tử trong tương lai giả mạo xác thực REALITY.
+* Máy chủ dùng `mldsa65Seed`, client dùng `mldsa65Verify` tương ứng.
+* `mldsa65Seed` được tạo bằng `XrayR mldsa65` (32 byte, `base64.RawURLEncoding`) và **phải khác `privateKey`**, nếu không xray sẽ từ chối khởi động.
+* Nếu client không cấu hình `mldsa65Verify` thì kết nối vẫn thiết lập được, chỉ là không có kiểm tra bổ sung.
+* Bật `show` ở phía client để xác nhận — log sẽ in:
+  `REALITY localAddr: ... is using ML-DSA-65 for cert's extra verification: true`
+* Menu script quản lý `14` / `15` tạo trực tiếp cặp khóa x25519 và ML-DSA-65 (nhấn Enter để tạo ngẫu nhiên, hoặc dán khóa riêng / seed có sẵn để suy ra nửa còn lại).
 
 ## Chức năng
 
