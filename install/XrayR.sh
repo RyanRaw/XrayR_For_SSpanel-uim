@@ -329,6 +329,11 @@ do_mldsa65() {
     echo -e "  ${green}Verify${plain} → 客户端 mldsa65Verify / pqv"
 }
 
+do_ssh() {
+    # SSH 安全设置（改端口 / 生成登录密钥 / 关闭密码登录）由独立脚本处理
+    bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/ssh.sh)
+}
+
 update_shell() {
     local self tmp url ok=0
     self="$(readlink -f "$0")"
@@ -453,9 +458,11 @@ show_menu() {
 ————————————————
  ${green}14.${plain} 生成 x25519 密钥对 (REALITY)
  ${green}15.${plain} 生成 ML-DSA-65 密钥对 (REALITY 后量子)
+————————————————
+ ${green}16.${plain} SSH 安全设置 (端口 / 密钥 / 密码登录 / 转发)
 "
     show_status
-    echo && read -p "请输入选择 [0-15]: " num
+    echo && read -p "请输入选择 [0-16]: " num
 
     case "${num}" in
         0) edit_config; before_show_menu ;;
@@ -474,7 +481,8 @@ show_menu() {
         13) update_shell ;;
         14) check_installed && do_x25519; before_show_menu ;;
         15) check_installed && do_mldsa65; before_show_menu ;;
-        *) echo -e "${red}请输入正确的数字 [0-15]${plain}" && before_show_menu ;;
+        16) do_ssh; before_show_menu ;;
+        *) echo -e "${red}请输入正确的数字 [0-16]${plain}" && before_show_menu ;;
     esac
 }
 
