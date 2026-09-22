@@ -385,14 +385,14 @@ install_pubkey() {
 
 generate_key() {
     echo ""
-    echo "  1) ed25519  （推荐，现代客户端都支持）"
-    echo "  2) rsa-4096 （兼容老客户端）"
+    echo "  1) ed25519  （推荐，现代客户端都支持；老版 SecureCRT 可能不认）"
+    echo "  2) rsa-4096 （额外导出一份 PEM 私钥，兼容 SecureCRT / Xshell 等老客户端）"
     echo ""
     local choice
     read -p "请选择密钥类型 [1-2，默认 1]: " choice
     choice="${choice:-1}"
 
-    local type size keyfile
+    local type size keyfile pemfile=""
     case "$choice" in
         1) type="ed25519"; size="";;
         2) type="rsa"; size="-b 4096";;
@@ -417,20 +417,58 @@ generate_key() {
     chmod 600 "$keyfile"
     log_info "已生成密钥对：${keyfile}"
 
+    # RSA 额外导出一份传统 PEM 格式私钥：ssh-keygen 现在默认输出新版 OpenSSH 格式
+    # （-----BEGIN OPENSSH PRIVATE KEY-----），较老的 SecureCRT / Xshell 不认。
+    # 只能对 RSA 做：ed25519 执行 -m PEM 会返回成功但既不转换、密钥还会变得无法解析，
+    # 因此转换后必须校验格式与派生出的公钥，任一不符就丢弃这份副本。
+    if [[ "$type" == "rsa" ]]; then
+        pemfile="${keyfile}_pem"
+        if cp -f "$keyfile" "$pemfile" \
+            && ssh-keygen -p -m PEM -f "$pemfile" -P "" -N "" >/dev/null 2>&1 \
+            && head -n 1 "$pemfile" | grep -q 'BEGIN RSA PRIVATE KEY' \
+            && [[ "$(ssh-keygen -y -f "$pemfile" 2>/dev/null)" == "$(cut -d' ' -f1,2 "${keyfile}.pub")" ]]; then
+            chmod 600 "$pemfile"
+            log_info "已额外导出 PEM 格式私钥：${pemfile}"
+        else
+            rm -f "$pemfile"
+            pemfile=""
+            log_warn "PEM 格式导出失败，请改用上面的新版 OpenSSH 格式私钥。"
+        fi
+    fi
+
     install_pubkey "$(cat "${keyfile}.pub")"
 
     echo ""
-    log_warn "════ 下面是私钥，请立刻复制保存到本地 ════"
+    log_warn "════ 私钥（一）：新版 OpenSSH 格式，命令行 ssh 与新版客户端用这份 ════"
     echo ""
     cat "$keyfile"
     echo ""
+    if [[ -n "$pemfile" ]]; then
+        log_warn "════ 私钥（二）：PEM 格式，老版 SecureCRT / Xshell 用这份 ════"
+        echo ""
+        cat "$pemfile"
+        echo ""
+    fi
     log_warn "══════════════════════════════════════════"
-    echo "  客户端保存为文件（如 ~/.ssh/xrayr_key）后："
+    echo "  ── 命令行客户端 ──"
+    echo "  保存为文件（如 ~/.ssh/xrayr_key）后："
     echo -e "    ${green}chmod 600 ~/.ssh/xrayr_key${plain}"
     echo -e "    ${green}ssh -i ~/.ssh/xrayr_key root@<本机IP>${plain}"
     echo ""
+    echo "  ── SecureCRT / Xshell 等图形客户端 ──"
+    echo "    · 它们要的是「私钥文件」，不能把私钥内容粘贴进对话框"
+    echo "    · SecureCRT 的约定：私钥文件名必须叫 Identity（无扩展名），"
+    echo "      同目录放一份公钥 Identity.pub，会话里勾选 PublicKey 后选的是"
+    echo "      Identity.pub（会话选项 → 连接 → SSH2 → 身份验证 → PublicKey → 属性）"
+    if [[ "$type" == "rsa" ]]; then
+        echo "    · 报密钥加载失败就用上面 PEM 那份（私钥二）"
+    else
+        echo -e "    · ${yellow}老版 SecureCRT 可能不支持 ed25519；若报密钥加载失败，${plain}"
+        echo -e "      ${yellow}请重新执行本项并选 2) rsa-4096（会附带 PEM 格式）${plain}"
+    fi
+    echo ""
     echo "  确认能正常登录后，建议删除服务器上的私钥副本："
-    echo -e "    ${green}rm -f ${keyfile}${plain}（公钥 ${keyfile}.pub 可保留）"
+    echo -e "    ${green}rm -f ${keyfile}${pemfile:+ $pemfile}${plain}（公钥 ${keyfile}.pub 可保留）"
     echo ""
     read -p "按回车返回..." _
 }
