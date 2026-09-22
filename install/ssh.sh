@@ -507,16 +507,16 @@ key_menu() {
     echo "  1) 在服务器上生成新密钥对（会打印私钥，需自行保存到本地）"
     echo "  2) 使用已有公钥（把本地 ~/.ssh/id_ed25519.pub 的内容粘贴进来）"
     echo "  3) 查看当前已安装的公钥"
-    echo "  0) 返回"
+    echo "  q) 返回"
     echo ""
     local n
-    read -p "请输入选择 [0-3]: " n
+    read -p "请输入选择 [1-3]，或 q 返回: " n
     case "$n" in
         1) generate_key ;;
         2) use_existing_pubkey ;;
         3) list_authorized_keys ;;
-        0) return 0 ;;
-        *) log_error "请输入正确的数字 [0-3]。" ;;
+        q|Q) return 0 ;;
+        *) log_error "请输入正确的数字 [1-3]，或输入 q 返回。" ;;
     esac
 }
 
@@ -691,10 +691,10 @@ forward_menu() {
     echo "  3) 开启 TUN 设备转发  （PermitTunnel yes，支持 ssh -w）"
     echo "  4) 一键全部开启"
     echo "  5) 全部关闭"
-    echo "  0) 返回"
+    echo "  q) 返回"
     echo ""
     local n
-    read -p "请输入选择 [0-5]: " n
+    read -p "请输入选择 [1-5]，或 q 返回: " n
     case "$n" in
         1) apply_forwarding tcp ;;
         2) apply_forwarding gateway ;;
@@ -707,8 +707,8 @@ forward_menu() {
             apply_forwarding all
             ;;
         5) apply_forwarding off ;;
-        0) return 0 ;;
-        *) log_error "请输入正确的数字 [0-5]。" ;;
+        q|Q) return 0 ;;
+        *) log_error "请输入正确的数字 [1-5]，或输入 q 返回。" ;;
     esac
 }
 
@@ -803,10 +803,10 @@ show_menu() {
     echo -e "  ${green}6.${plain} 查看当前 SSH 生效配置"
     echo -e "  ${green}7.${plain} 恢复最近一次备份的配置"
     echo "————————————————————————————"
-    echo -e "  ${green}0.${plain} 退出"
+    echo -e "  ${green}q.${plain} 退出"
     echo ""
     local n
-    read -p "请输入选择 [0-7]: " n
+    read -p "请输入选择 [1-7]，或 q 退出: " n
     case "$n" in
         1) change_port ;;
         2) key_menu ;;
@@ -815,8 +815,8 @@ show_menu() {
         5) forward_menu ;;
         6) show_config ;;
         7) restore_backup ;;
-        0) exit 0 ;;
-        *) log_error "请输入正确的数字 [0-7]。" ;;
+        q|Q) exit 0 ;;
+        *) log_error "请输入正确的数字 [1-7]，或输入 q 退出。" ;;
     esac
 }
 
