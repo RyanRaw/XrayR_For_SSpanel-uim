@@ -485,10 +485,10 @@ show_menu() {
 ————————————————
  ${green}16.${plain} SSH 安全设置 (端口 / 密钥 / 密码登录 / 转发)
 ————————————————
- ${green}17.${plain} 退出
+ ${green}q.${plain} 退出
 "
     show_status
-    echo && read -p "请输入选择 [0-17]: " num
+    echo && read -p "请输入选择 [0-16]，或 q 退出: " num
 
     case "${num}" in
         0) edit_config; before_show_menu ;;
@@ -508,8 +508,8 @@ show_menu() {
         14) check_installed && do_x25519; before_show_menu ;;
         15) check_installed && do_mldsa65; before_show_menu ;;
         16) do_ssh; before_show_menu ;;
-        17) log_info "已退出。"; exit 0 ;;
-        *) echo -e "${red}请输入正确的数字 [0-17]${plain}" && before_show_menu ;;
+        q|Q) log_info "已退出。"; exit 0 ;;
+        *) echo -e "${red}请输入正确的数字 [0-16]，或输入 q 退出${plain}" && before_show_menu ;;
     esac
 }
 
