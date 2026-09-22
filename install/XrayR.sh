@@ -330,8 +330,32 @@ do_mldsa65() {
 }
 
 do_ssh() {
-    # SSH 安全设置（改端口 / 生成登录密钥 / 关闭密码登录）由独立脚本处理
-    bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/ssh.sh)
+    # SSH 安全设置（改端口 / 生成密钥 / 密码登录 / 转发）由独立脚本处理。
+    # 与 update_shell 一致：先清 CDN 缓存，CDN 失败或内容异常时回退源站，
+    # 否则 @master 的缓存窗口内可能跑到旧脚本（或新文件刚发布时拿到 404）。
+    local tmp url ok=0
+    tmp="$(mktemp 2>/dev/null || echo "/tmp/ssh.sh.$$")"
+
+    log_info "正在拉取 SSH 安全设置脚本..."
+    purge_jsdelivr "install/ssh.sh"
+
+    for url in "${SCRIPT_CDN_BASE}/install/ssh.sh" "${SCRIPT_RAW_BASE}/install/ssh.sh"; do
+        if download_file "$url" "$tmp" && [[ -s "$tmp" ]] && bash -n "$tmp" 2>/dev/null; then
+            ok=1
+            break
+        fi
+    done
+
+    if [[ "$ok" != "1" ]]; then
+        rm -f "$tmp"
+        log_error "下载 SSH 安全设置脚本失败，请检查网络后重试"
+        return 1
+    fi
+
+    bash "$tmp"
+    local rc=$?
+    rm -f "$tmp"
+    return $rc
 }
 
 update_shell() {
