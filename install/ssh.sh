@@ -512,7 +512,7 @@ show_keysetup_hint() {
     log_warn "═══════════════════════════════════════"
 }
 
-# 仅打开密钥登录、保留密码登录：用于从密码迁移到密钥的中转步骤
+# 打开密钥登录、保留密码登录：用于从密码迁移到密钥的中转步骤
 enable_pubkey_only() {
     echo ""
     local auth="/root/.ssh/authorized_keys"
@@ -524,7 +524,7 @@ enable_pubkey_only() {
         [[ "$c" == "yes" ]] || { log_info "已取消。"; return 0; }
     fi
 
-    log_info "仅启用密钥登录，密码登录保持不变。"
+    log_info "已启用密钥登录，密码登录保持不变。"
     echo "  写入的配置项："
     echo "    PubkeyAuthentication yes"
     echo ""
@@ -759,7 +759,7 @@ show_menu() {
     echo "————————————————————————————"
     echo -e "  ${green}1.${plain} 修改 SSH 端口"
     echo -e "  ${green}2.${plain} 生成 / 安装 SSH 登录密钥"
-    echo -e "  ${green}3.${plain} 仅启用密钥登录（保留密码登录）"
+    echo -e "  ${green}3.${plain} 启用密钥登录（保留密码登录）"
     echo -e "  ${green}4.${plain} 关闭密码登录（仅允许密钥登录）"
     echo -e "  ${green}5.${plain} 开启 SSH 转发（TCP / 远程绑定 / TUN）"
     echo -e "  ${green}6.${plain} 查看当前 SSH 生效配置"
