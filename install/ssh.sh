@@ -361,7 +361,7 @@ change_port() {
     echo -e "       ${green}ssh -p ${port} root@<本机IP>${plain}"
     echo "  2. 确认能登录后再关闭当前连接"
     echo "  3. 如果连不上，在本机控制台执行以下命令回滚："
-    echo -e "       ${green}bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/ssh.sh)${plain} → 选 [6] 恢复备份"
+    echo -e "       ${green}bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/ssh.sh)${plain} → 选 [7] 恢复备份"
     echo "  4. 云服务器还需在控制台「安全组」放行 TCP ${port}"
     log_warn "═══════════════════════════════════════"
 }
@@ -482,7 +482,7 @@ key_menu() {
     esac
 }
 
-# ==================== 功能 3：关闭密码登录 ====================
+# ==================== 功能 3 / 4：密钥登录 ====================
 
 count_other_keyed_users() {
     local count=0 home f
@@ -492,6 +492,54 @@ count_other_keyed_users() {
         [[ -s "$f" ]] && count=$((count + 1))
     done
     echo "$count"
+}
+
+# 密钥登录相关操作后的统一提示
+show_keysetup_hint() {
+    echo ""
+    log_warn "════════ 务必先不要关闭当前窗口 ════════"
+    echo "  1. 新开一个终端，用密钥登录测试："
+    echo -e "       ${green}ssh -i <你的私钥> root@<本机IP>${plain}"
+    echo "  2. 确认能登录后再关闭当前连接"
+    echo "  3. 若登不上，在本机控制台执行以下命令回滚："
+    echo -e "       ${green}bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/ssh.sh)${plain} → 选 [7] 恢复备份"
+    echo ""
+    echo "  当前生效值："
+    printf "    %-46s %s\n" "公钥登录 (pubkeyauthentication)"   "$(effective_of pubkeyauthentication)"
+    printf "    %-46s %s\n" "密码登录 (passwordauthentication)" "$(effective_of passwordauthentication)"
+    printf "    %-46s %s\n" "公钥文件 (authorizedkeysfile)"     "$(effective_of authorizedkeysfile)"
+    printf "    %-46s %s\n" "root 公钥数量"                      "$( [[ -s /root/.ssh/authorized_keys ]] && grep -c . /root/.ssh/authorized_keys || echo 0 )"
+    log_warn "═══════════════════════════════════════"
+}
+
+# 仅打开密钥登录、保留密码登录：用于从密码迁移到密钥的中转步骤
+enable_pubkey_only() {
+    echo ""
+    local auth="/root/.ssh/authorized_keys"
+    if [[ ! -s "$auth" ]]; then
+        log_warn "root 还没有任何公钥（${auth} 为空），打开后也无法用密钥登录。"
+        echo "  建议先执行 [2] 生成或安装密钥。"
+        local c
+        read -p "仍要继续？输入 yes 继续: " c
+        [[ "$c" == "yes" ]] || { log_info "已取消。"; return 0; }
+    fi
+
+    log_info "仅启用密钥登录，密码登录保持不变。"
+    echo "  写入的配置项："
+    echo "    PubkeyAuthentication yes"
+    echo ""
+    log_warn "迁移建议：本次改完先用密钥另开终端验证，确认能登进，再用 [4] 关闭密码登录。"
+
+    local target
+    target="$(prepare_write PubkeyAuthentication)"
+    write_block "$target" pubkey "PubkeyAuthentication yes"
+
+    if ! apply_config; then
+        log_error "写入失败，配置已回滚。"
+        return 1
+    fi
+
+    show_keysetup_hint
 }
 
 disable_password() {
@@ -533,17 +581,10 @@ disable_password() {
         return 1
     fi
 
-    echo ""
-    log_warn "════════ 务必先不要关闭当前窗口 ════════"
-    echo "  1. 新开一个终端，用密钥登录测试："
-    echo -e "       ${green}ssh -i <你的私钥> root@<本机IP>${plain}"
-    echo "  2. 确认能登录后再关闭当前连接"
-    echo "  3. 若密钥登不上，在本机控制台执行以下命令回滚："
-    echo -e "       ${green}bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/ssh.sh)${plain} → 选 [6] 恢复备份"
-    log_warn "═══════════════════════════════════════"
+    show_keysetup_hint
 }
 
-# ==================== 功能 4：开启 SSH 转发 ====================
+# ==================== 功能 5：开启 SSH 转发 ====================
 
 forward_status() {
     echo ""
@@ -633,7 +674,7 @@ forward_menu() {
     esac
 }
 
-# ==================== 功能 5：查看生效配置 ====================
+# ==================== 功能 6：查看生效配置 ====================
 
 show_config() {
     echo ""
@@ -662,7 +703,7 @@ show_config() {
     echo "  root 公钥数量：$( [[ -s /root/.ssh/authorized_keys ]] && grep -c . /root/.ssh/authorized_keys || echo 0 )"
 }
 
-# ==================== 功能 6：恢复备份 ====================
+# ==================== 功能 7：恢复备份 ====================
 
 restore_backup() {
     echo ""
@@ -718,24 +759,26 @@ show_menu() {
     echo "————————————————————————————"
     echo -e "  ${green}1.${plain} 修改 SSH 端口"
     echo -e "  ${green}2.${plain} 生成 / 安装 SSH 登录密钥"
-    echo -e "  ${green}3.${plain} 关闭密码登录（仅允许密钥登录）"
-    echo -e "  ${green}4.${plain} 开启 SSH 转发（TCP / 远程绑定 / TUN）"
-    echo -e "  ${green}5.${plain} 查看当前 SSH 生效配置"
-    echo -e "  ${green}6.${plain} 恢复最近一次备份的配置"
+    echo -e "  ${green}3.${plain} 仅启用密钥登录（保留密码登录）"
+    echo -e "  ${green}4.${plain} 关闭密码登录（仅允许密钥登录）"
+    echo -e "  ${green}5.${plain} 开启 SSH 转发（TCP / 远程绑定 / TUN）"
+    echo -e "  ${green}6.${plain} 查看当前 SSH 生效配置"
+    echo -e "  ${green}7.${plain} 恢复最近一次备份的配置"
     echo "————————————————————————————"
     echo -e "  ${green}0.${plain} 退出"
     echo ""
     local n
-    read -p "请输入选择 [0-6]: " n
+    read -p "请输入选择 [0-7]: " n
     case "$n" in
         1) change_port ;;
         2) key_menu ;;
-        3) disable_password ;;
-        4) forward_menu ;;
-        5) show_config ;;
-        6) restore_backup ;;
+        3) enable_pubkey_only ;;
+        4) disable_password ;;
+        5) forward_menu ;;
+        6) show_config ;;
+        7) restore_backup ;;
         0) exit 0 ;;
-        *) log_error "请输入正确的数字 [0-6]。" ;;
+        *) log_error "请输入正确的数字 [0-7]。" ;;
     esac
 }
 
