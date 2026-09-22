@@ -12,6 +12,12 @@ A Xray backend framework that can easily support many panels.
 
 项目地址: [https://github.com/RyanRaw/XrayR_For_SSpanel-uim](https://github.com/RyanRaw/XrayR_For_SSpanel-uim)
 
+## 一键安装
+
+```bash
+bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
+```
+
 ## 项目目录
 
 * [XrayR_For_SSpanel-uim](https://github.com/RyanRaw/XrayR_For_SSpanel-uim)：XrayR源码以及软件发布（SSPanel-UIM 适配版）。
@@ -29,6 +35,7 @@ A Xray backend framework that can easily support many panels.
 * 配置简单明了。
 * 修改配置自动重启实例。
 * 方便编译和升级，可以快速更新核心版本， 支持Xray-core新特性。
+* 支持 REALITY、XHTTP，以及后量子特性（X25519MLKEM768、ML-DSA-65）。
 
 ## 功能介绍
 
