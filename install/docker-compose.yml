@@ -1,0 +1,8 @@
+version: '3'
+services: 
+  xrayr: 
+    image: ghcr.io/ryanraw/xrayr-for-sspanel-uim:latest
+    volumes:
+      - ./config:/etc/XrayR/ # 映射配置文件夹
+    restart: always
+    network_mode: host
