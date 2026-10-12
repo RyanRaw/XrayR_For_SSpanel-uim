@@ -5,7 +5,6 @@
 ![](https://img.shields.io/github/stars/RyanRaw/XrayR_For_SSpanel-uim)
 ![](https://img.shields.io/github/forks/RyanRaw/XrayR_For_SSpanel-uim)
 ![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/release.yml/badge.svg)
-![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/docker.yml/badge.svg)
 [![Github All Releases](https://img.shields.io/github/downloads/RyanRaw/XrayR_For_SSpanel-uim/total.svg)]()
 
 [Iranian(farsi) README](README_Fa.md) | [Vietnamese(vi) README](README-vi.md) | [Chinese(zh) README](README.md)
@@ -100,10 +99,6 @@ This project is just my personal learning and development and maintenance. I do 
 ```bash
 bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
 ```
-
-### Docker
-
-[Docker deployment tutorial](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/docker)
 
 ### Manual installation
 

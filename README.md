@@ -5,7 +5,6 @@
 ![](https://img.shields.io/github/stars/RyanRaw/XrayR_For_SSpanel-uim)
 ![](https://img.shields.io/github/forks/RyanRaw/XrayR_For_SSpanel-uim)
 ![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/release.yml/badge.svg)
-![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/docker.yml/badge.svg)
 [![Github All Releases](https://img.shields.io/github/downloads/RyanRaw/XrayR_For_SSpanel-uim/total.svg)]()
 
 [English](README-en.md) | [Iranian](README_Fa.md) | [Vietnamese](README-vi.md)
@@ -98,10 +97,6 @@ A Xray backend framework that can easily support many panels.
 ```bash
 bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
 ```
-
-### 使用Docker部署软件
-
-[Docker部署教程](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/docker)
 
 ### 手动安装
 

@@ -5,7 +5,6 @@
 ![](https://img.shields.io/github/stars/RyanRaw/XrayR_For_SSpanel-uim)
 ![](https://img.shields.io/github/forks/RyanRaw/XrayR_For_SSpanel-uim)
 ![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/release.yml/badge.svg)
-![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/docker.yml/badge.svg)
 [![Github All Releases](https://img.shields.io/github/downloads/RyanRaw/XrayR_For_SSpanel-uim/total.svg)]()
 
 [Iranian(farsi) README](README_Fa.md) | [English(en) README](README-en.md) | [Chinese(zh) README](README.md)
@@ -100,10 +99,6 @@ Dự án này chỉ là học tập và phát triển và bảo trì cá nhân c
 ```bash
 bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
 ```
-
-### Sử dụng phần mềm triển khai Docker
-
-[Hướng dẫn cài đặt thông qua Docker](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/docker)
 
 ### Hướng dẫn cài đặt
 

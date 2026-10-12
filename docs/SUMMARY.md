@@ -4,7 +4,7 @@
 
 * [下载和安装](/xrayr-xia-zai-he-an-zhuang/install/README.md)
   * [使用一键脚本安装](/xrayr-xia-zai-he-an-zhuang/install/one-click.md)
-  * [使用docker安装](/xrayr-xia-zai-he-an-zhuang/install/docker.md)
+  
   * [手动安装](/xrayr-xia-zai-he-an-zhuang/install/manual.md)
 
 ## XrayR配置文件说明

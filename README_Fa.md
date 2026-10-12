@@ -5,7 +5,6 @@
 ![](https://img.shields.io/github/stars/RyanRaw/XrayR_For_SSpanel-uim)
 ![](https://img.shields.io/github/forks/RyanRaw/XrayR_For_SSpanel-uim)
 ![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/release.yml/badge.svg)
-![](https://github.com/RyanRaw/XrayR_For_SSpanel-uim/actions/workflows/docker.yml/badge.svg)
 [![Github All Releases](https://img.shields.io/github/downloads/RyanRaw/XrayR_For_SSpanel-uim/total.svg)]()
 
 [English(en) README](README-en.md) | [Vietnamese(vi) README](README-vi.md) | [Chinese(zh) README](README.md)
@@ -98,10 +97,6 @@
 ```
 bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
 ```
-
-### استقرار نرم افزار با استفاده از Docker
-
-[آموزش استقرار داکر](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/docker)
 
 ### نصب دستی
 
