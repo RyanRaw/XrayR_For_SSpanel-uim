@@ -1,48 +1,49 @@
 Log:
-  Level: debug # Log level: none, error, warning, info, debug 
-  AccessPath: # /etc/XrayR/access.Log
-  ErrorPath: # /etc/XrayR/error.log
-DnsConfigPath: # /etc/XrayR/dns.json # Path to dns config, check https://xtls.github.io/config/dns.html for help
-RouteConfigPath: # /etc/XrayR/route.json # /etc/XrayR/route.json # Path to route config, check https://xtls.github.io/config/routing.html for help
-InboundConfigPath: # /etc/XrayR/custom_inbound.json # Path to custom inbound config, check https://xtls.github.io/config/inbound.html for help
-OutboundConfigPath: # /etc/XrayR/custom_outbound.json # /etc/XrayR/custom_outbound.json # Path to custom outbound config, check https://xtls.github.io/config/outbound.html for help
+  Level: debug # 日志级别：none / error / warning / info / debug，debug 会刷很多日志
+  AccessPath: # 访问日志文件路径，例如 /etc/XrayR/access.log；留空=不单独记录
+  ErrorPath: # 错误日志文件路径，例如 /etc/XrayR/error.log；留空=不单独记录
+DnsConfigPath: # 自定义 DNS 配置文件（dns.json）路径，例如 /etc/XrayR/dns.json；留空=用内置默认
+RouteConfigPath: # 自定义路由配置文件（route.json）路径，例如 /etc/XrayR/route.json；留空=用内置默认
+InboundConfigPath: # 自定义入站配置文件（custom_inbound.json）路径；留空=用内置默认
+OutboundConfigPath: # 自定义出站配置文件（custom_outbound.json）路径；留空=用内置默认
 ConnectionConfig:
-  Handshake: 4 # Handshake time limit, Second
-  ConnIdle: 30 # Connection idle time limit, Second
-  UplinkOnly: 2 # Time limit when the connection downstream is closed, Second
-  DownlinkOnly: 4 # Time limit when the connection is closed after the uplink is closed, Second
-  BufferSize: 64 # The internal cache size of each connection, kB
+  Handshake: 4 # 握手超时时间（秒）
+  ConnIdle: 30 # 连接空闲多久后自动断开（秒）
+  UplinkOnly: 2 # 下行已关闭时，上行再多保留多久（秒）
+  DownlinkOnly: 4 # 上行已关闭时，下行再多保留多久（秒）
+  BufferSize: 64 # 每条连接的缓冲区大小（KB）
 Nodes:
-  - PanelType: "SSpanel" # Panel type: SSpanel
+  - PanelType: "SSpanel" # 对接的面板类型，本分支只支持 SSpanel
     ApiConfig:
-      ApiHost: "https://xxx.icu"
-      ApiKey: "abcdefg"
-      NodeID: 1
-      NodeType: V2ray # Node type: V2ray, Shadowsocks, Trojan, Shadowsocks-Plugin
-      Timeout: 10 # Timeout for the api request
-      EnableVless: false # Enable Vless for V2ray Type
-      VlessFlow: "xtls-rprx-vision" # Only support vless
-      SpeedLimit: 0 # Mbps, Local settings will replace remote settings, 0 means disable
-      DeviceLimit: 0 # Local settings will replace remote settings, 0 means disable
-      RuleListPath: # /etc/XrayR/rulelist Path to local rulelist file
-      DisableCustomConfig: false # disable custom config for sspanel
+      ApiHost: "https://xxx.icu" # 面板站点地址（你自己的域名，要带 https://）
+      ApiKey: "abcdefg" # 面板「系统设置 → 安全设置」里的 muKey（通信密钥）
+      NodeID: 1 # 本节点在面板里的节点 ID
+      NodeType: V2ray # 节点类型：V2ray / Shadowsocks / Trojan / Shadowsocks-Plugin
+      Timeout: 10 # 请求面板接口的超时时间（秒）
+      EnableVless: false # V2ray 类型是否走 VLESS，false=走 VMess
+      VlessFlow: "xtls-rprx-vision" # VLESS 的流控，只对 VLESS 有效；REALITY 一般用 xtls-rprx-vision
+      SpeedLimit: 0 # 本节点限速（Mbps），0=不限速；填了会覆盖面板里的设置
+      DeviceLimit: 0 # 本节点设备数上限，0=不限制；填了会覆盖面板里的设置
+      RuleListPath: # 本地审计规则文件或目录路径，例如 /etc/XrayR/rulelist；留空=不用本地规则
+      DisableCustomConfig: false # true=忽略面板下发的节点自定义配置（custom_config）
     ControllerConfig:
-      ListenIP: 0.0.0.0 # IP address you want to listen
-      SendIP: 0.0.0.0 # IP address you want to send pacakage
-      UpdatePeriodic: 60 # Time to update the nodeinfo, how many sec.
-      EnableDNS: false # Use custom DNS config, Please ensure that you set the dns.json well
-      DNSType: AsIs # AsIs, UseIP, UseIPv4, UseIPv6, DNS strategy
-      EnableProxyProtocol: false # Only works for WebSocket and TCP
-      DisableSniffing: false # Disable domain sniffing
-      DisablePayloadRule: false # 关闭「数据包内容」审计，只保留目标地址匹配（省 CPU） 
-      # REALITY 参数全部由面板下发（privateKey / serverNames / shortIds）；
-      # dest 缺失时后端用面板的 sni 自动补 ":443"，serverNames 用 [sni] 补，shortIds 全缺时用内置 ["", "0123456789abcdef"]。
-      # 本模板不再保留 REALITYConfigs 兜底：要调整 REALITY 参数请到面板改。置 false 则忽略面板参数、只用本地配置（多节点不要用）。
+      ListenIP: 0.0.0.0 # 入站监听地址，0.0.0.0=监听本机所有网卡
+      SendIP: 0.0.0.0 # 出站使用的本机 IP，0.0.0.0=自动选择
+      UpdatePeriodic: 60 # 每隔多少秒向面板同步一次节点信息和用户列表
+      EnableDNS: false # true=使用上面 DnsConfigPath 指定的自定义 DNS（要先配好该文件）
+      DNSType: AsIs # 域名解析策略：AsIs=原样送出 / UseIP / UseIPv4 / UseIPv6
+      EnableProxyProtocol: false # 只对 WebSocket 和 TCP 生效，开启后由前置代理回传真实客户端 IP
+      DisableSniffing: false # true=关闭域名嗅探（同时会让「数据包内容」审计拿不到首包）
+      DisablePayloadRule: false # true=关闭「数据包内容」审计，只按目标地址匹配（省 CPU）
+      # REALITY 的全部参数都由面板下发（私钥、serverNames、shortIds），本地不需要再写 REALITYConfigs 兜底：
+      # 面板没给 dest 时后端会自动用面板的 sni 拼成 "sni:443"，serverNames 用 [sni]，shortIds 全空时用内置默认值。
+      # 要调 REALITY 参数请到面板改。若把它设成 false，则会忽略面板下发的 REALITY 参数、只用本地配置
+      # —— 多节点场景（每台节点私钥不同）千万不要用 false，否则所有节点共用同一把私钥，客户端会握手失败。
       DisableLocalREALITYConfig: true
-      # 另可选（缺省即关闭，需要时自行添加）：
-      #   AutoSpeedLimitConfig     超速自动限速（Limit / WarnTimes / LimitSpeed / LimitDuration）
-      #   GlobalDeviceLimitConfig  跨节点设备数限制（Enable / RedisAddr / RedisPassword / RedisDB / Timeout / Expiry）
-      #   EnableFallback + FallBackConfigs   VLESS / Trojan 的 TLS 回落（REALITY 节点不需要）
-      # 本模板面向 REALITY 节点。下面这块不能省略：非 REALITY 且面板开了 TLS 的节点会读它，缺失会崩。
+      # 以下是可选配置，省略即等于关闭，需要时再自行添加：
+      #   AutoSpeedLimitConfig     用户超速后自动限速（Limit / WarnTimes / LimitSpeed / LimitDuration）
+      #   GlobalDeviceLimitConfig  跨节点统计设备数并限制（Enable / RedisAddr / RedisPassword / RedisDB / Timeout / Expiry）
+      #   EnableFallback + FallBackConfigs   VLESS / Trojan 的 TLS 回落（REALITY 节点用不到）
+      # 下面这一项不能删：不是 REALITY 且面板开了 TLS 的节点会读它，缺了会直接崩；CertMode 填 none 即可跳过证书逻辑。
       CertConfig:
-        CertMode: none # 需要 TLS 证书（非 REALITY 节点）时再配置：none / file / http / dns
+        CertMode: none # 证书获取方式：none=不用证书；只有需要 TLS 证书（非 REALITY）的节点才改成 file / http / dns
