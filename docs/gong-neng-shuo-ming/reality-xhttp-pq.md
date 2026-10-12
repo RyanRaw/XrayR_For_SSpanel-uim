@@ -20,6 +20,17 @@ REALITY 的每个字段独立取值，前一层没给就往下走：
 
 也就是说面板可以只下发它管得住的字段（私钥、SNI、shortId），其余交给节点本地配置，不必每台节点都推全量。
 
+> ⚠️ **注意 `DisableLocalREALITYConfig`（`Nodes[].ControllerConfig`）——它决定 REALITY 参数从哪来：**
+>
+> | 取值 | 行为 |
+> | :--- | :--- |
+> | `true`（模板默认）| REALITY 由**面板**的 `enable_reality` 决定；参数按上面的优先级取（面板字段优先，本地 `REALITYConfigs` 兜底）|
+> | `false` | **完全忽略面板下发的 REALITY 参数**，只用本地 `EnableREALITY` + `REALITYConfigs` |
+>
+> 多节点场景（每台节点私钥不同）**必须用 `true`**，否则所有节点会共用本地那一把私钥，客户端握手必然失败。
+> 取 `true` 时本地 `EnableREALITY` 不生效；`REALITYConfigs` 只需保留面板**不会**下发的项（如 `Dest`、`ServerNames`），
+> 面板会下发 `privateKey` / `serverNames` / `shortIds`；`dest` 缺失时后端用 `sni + ":443"` 兜底，`shortIds` 全缺时用内置 `["", "0123456789abcdef"]`。
+
 ### 字段对照
 
 | 本地 `REALITYConfigs` | 嵌套键 `reality-opts.*` | 平铺键（`custom_config` 顶层） | 类型 |
