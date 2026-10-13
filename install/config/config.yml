@@ -1,5 +1,5 @@
 Log:
-  Level: debug # 日志级别：none / error / warning / info / debug，debug 会刷很多日志
+  Level: warning  # 日志级别：none / error / warning / info / debug，debug 会刷很多日志
   AccessPath: # 访问日志文件路径，例如 /etc/XrayR/access.log；留空=不单独记录
   ErrorPath: # 错误日志文件路径，例如 /etc/XrayR/error.log；留空=不单独记录
 DnsConfigPath: # 自定义 DNS 配置文件（dns.json）路径，例如 /etc/XrayR/dns.json；留空=用内置默认
