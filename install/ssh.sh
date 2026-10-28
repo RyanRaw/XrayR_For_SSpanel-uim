@@ -28,6 +28,8 @@ DROPIN_DIR="${DROPIN_DIR:-/etc/ssh/sshd_config.d}"
 DROPIN_FILE="${DROPIN_FILE:-${DROPIN_DIR}/00-xrayr-hardening.conf}"
 BACKUP_DIR="${BACKUP_DIR:-/etc/ssh/xrayr-backup}"
 BACKUP_LAST="${BACKUP_DIR}/last"
+# 套接字激活（ssh.socket）时写 systemd 端口覆盖的位置
+SOCKET_OVERRIDE_DIR="${SOCKET_OVERRIDE_DIR:-/etc/systemd/system}"
 
 DIRECTIVES_PORT=(Port)
 DIRECTIVES_PASSWORD=(PubkeyAuthentication PasswordAuthentication ChallengeResponseAuthentication KbdInteractiveAuthentication PermitRootLogin)
@@ -108,6 +110,84 @@ sshd_reload() {
     return 1
 }
 
+# systemd 套接字激活的系统（Ubuntu 24.10+/Debian trixie）里，监听端口由 ssh.socket 持有，
+# 只改 sshd_config 的 Port 是不会生效的，必须同步 systemd 的 ListenStream。
+sshd_socket_unit() {
+    local svc="$1"
+    command -v systemctl >/dev/null 2>&1 || return 1
+    [[ -n "$svc" ]] || return 1
+    systemctl is-active --quiet "${svc}.socket" 2>/dev/null || return 1
+    echo "${svc}.socket"
+}
+
+# 端口是否真的在监听（sshd 收到 SIGHUP 只重读配置，不会重新绑定监听端口）
+port_listening() {
+    local port="$1"
+    if command -v ss >/dev/null 2>&1; then
+        ss -ltn 2>/dev/null | awk 'NR > 1 { print $4 }' | grep -qE "[:.]${port}$" && return 0
+    elif command -v netstat >/dev/null 2>&1; then
+        netstat -ltn 2>/dev/null | awk 'NR > 2 { print $4 }' | grep -qE "[:.]${port}$" && return 0
+    else
+        # 没有 ss / netstat，无法判断，按成功处理，不阻断流程
+        return 0
+    fi
+    return 1
+}
+
+socket_override_file() {
+    echo "${SOCKET_OVERRIDE_DIR}/$1.d/10-xrayr-port.conf"
+}
+
+apply_socket_port() {
+    local sock="$1" port="$2" file
+    file="$(socket_override_file "$sock")"
+    mkdir -p "$(dirname "$file")" || return 1
+    {
+        echo "# 由 XrayR ssh.sh 写入：套接字激活的 sshd 由 systemd 持有监听端口"
+        echo "[Socket]"
+        echo "ListenStream="
+        echo "ListenStream=${port}"
+    } > "$file"
+    systemctl daemon-reload >/dev/null 2>&1
+    systemctl restart "$sock" >/dev/null 2>&1
+    log_info "已同步 ${sock} 的监听端口为 ${port}（${file}）"
+}
+
+clear_socket_port() {
+    local sock="$1" file
+    [[ -n "$sock" ]] || return 0
+    file="$(socket_override_file "$sock")"
+    [[ -f "$file" ]] || return 0
+    rm -f "$file"
+    rmdir "$(dirname "$file")" 2>/dev/null || true
+    systemctl daemon-reload >/dev/null 2>&1
+    systemctl restart "$sock" >/dev/null 2>&1
+}
+
+sshd_restart() {
+    local svc sock rc=1
+    svc="$(sshd_service)"
+    if [[ -z "$svc" ]]; then
+        log_warn "未找到 sshd 服务，请手动重启 SSH 使配置生效。"
+        return 1
+    fi
+    if command -v systemctl >/dev/null 2>&1; then
+        sock="$(sshd_socket_unit "$svc" 2>/dev/null || true)"
+        systemctl restart "$svc" >/dev/null 2>&1
+        rc=$?
+        [[ -n "$sock" ]] && systemctl restart "$sock" >/dev/null 2>&1
+    else
+        "/etc/init.d/${svc}" restart >/dev/null 2>&1
+        rc=$?
+    fi
+    if [[ $rc -eq 0 ]]; then
+        log_info "SSH 服务（${svc}）已重启。"
+        return 0
+    fi
+    log_warn "SSH 服务重启失败，请手动检查：systemctl status ${svc} / rc-service ${svc} status"
+    return 1
+}
+
 # ==================== 配置文件读写 ====================
 
 # 实际写入目标：Debian/Ubuntu 若 Include 了 sshd_config.d，则写排序最靠前的片段。
@@ -132,6 +212,11 @@ backup_config() {
         cp -f "$DROPIN_FILE" "${BACKUP_DIR}/dropin.${ts}"
     fi
     log_info "已备份配置：${stamp}"
+    # 只保留最近 20 份（菜单 [7] 列出 10 份），避免反复调整把备份目录堆满
+    find "$BACKUP_DIR" -maxdepth 1 -name 'sshd_config.*' 2>/dev/null | sort -r | tail -n +21 | \
+        while IFS= read -r old; do
+            rm -f "$old" "${BACKUP_DIR}/dropin.${old##*/sshd_config.}"
+        done
 }
 
 list_backups() {
@@ -200,6 +285,31 @@ comment_dropins_except_target() {
     done
 }
 
+# 撤销 comment_directives 的注释（把 "# xrayr-disabled: xxx" 还原成 "xxx"）
+uncomment_disabled() {
+    local file="$1" tmp
+    [[ -f "$file" ]] || return 0
+    grep -q '^# xrayr-disabled: ' "$file" 2>/dev/null || return 0
+    tmp="$(mktemp)"
+    awk '
+        /^# xrayr-disabled: / { print substr($0, 19); next }
+        { print }
+    ' "$file" > "$tmp" && cat "$tmp" > "$file"
+    rm -f "$tmp"
+}
+
+# 回滚/恢复备份时用：主配置与所有 drop-in 里的被注释指令一起还原，
+# 否则云厂商片段（如 50-cloud-init.conf、01-*.conf）会一直保持被注释的状态。
+restore_disabled_directives() {
+    local f
+    uncomment_disabled "$SSHD_CONFIG"
+    [[ -d "$DROPIN_DIR" ]] || return 0
+    for f in "$DROPIN_DIR"/*.conf; do
+        [[ -f "$f" ]] || continue
+        uncomment_disabled "$f"
+    done
+}
+
 # 写入指定功能的托管块
 write_block() {
     local file="$1" topic="$2"
@@ -242,13 +352,16 @@ apply_config() {
 }
 
 rollback() {
-    local last bin
+    local last bin sock
     last="$(cat "$BACKUP_LAST" 2>/dev/null || true)"
     if [[ -n "$last" && -f "$last" ]]; then
         cat "$last" > "$SSHD_CONFIG"
         log_warn "已恢复主配置：${last}"
     fi
+    sock="$(sshd_socket_unit "$(sshd_service)" 2>/dev/null || true)"
+    clear_socket_port "$sock"
     rm -f "$DROPIN_FILE"
+    restore_disabled_directives
     bin="$(sshd_bin)"
     [[ -n "$bin" ]] && "$bin" -t >/dev/null 2>&1
     sshd_reload >/dev/null 2>&1
@@ -344,13 +457,28 @@ change_port() {
         return 1
     fi
 
-    local target
+    local target sock
     target="$(prepare_write "${DIRECTIVES_PORT[@]}")"
     write_block "$target" port "Port ${port}"
 
     if ! apply_config; then
         log_error "改端口失败，配置已回滚。"
         return 1
+    fi
+
+    # sshd 收到 SIGHUP 只重读配置、不会重新绑定监听端口；套接字激活的系统（ssh.socket）
+    # 的监听口还归 systemd 管，所以必须同步覆盖并重启，否则新端口永远不会进入监听状态。
+    sock="$(sshd_socket_unit "$(sshd_service)" 2>/dev/null || true)"
+    if ! port_listening "$port"; then
+        [[ -n "$sock" ]] && apply_socket_port "$sock" "$port"
+        log_info "新端口 ${port} 尚未监听，正在重启 SSH 服务使其生效..."
+        sshd_restart
+        sleep 1
+    fi
+    if port_listening "$port"; then
+        log_info "已验证：SSH 正在监听 ${port}/tcp。"
+    else
+        log_warn "未检测到 ${port} 处于监听状态，请检查：ss -ltnp / sshd -T | grep -i port"
     fi
 
     open_firewall_port "$port"
@@ -773,6 +901,12 @@ restore_backup() {
     local chosen="${arr[$((n - 1))]}"
     cat "$chosen" > "$SSHD_CONFIG"
     rm -f "$DROPIN_FILE"
+    # 连同被本脚本注释掉的其它 drop-in 指令一起还原，否则云厂商的片段会一直是注释状态
+    restore_disabled_directives
+    # 清掉套接字激活时写入的端口覆盖，否则 systemd 还在监听被改过的端口
+    local sock
+    sock="$(sshd_socket_unit "$(sshd_service)" 2>/dev/null || true)"
+    clear_socket_port "$sock"
     echo "$chosen" > "$BACKUP_LAST"
     log_info "已恢复：${chosen} → ${SSHD_CONFIG}"
 

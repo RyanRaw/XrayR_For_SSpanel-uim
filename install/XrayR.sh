@@ -384,7 +384,7 @@ update_shell() {
     cp -f "$self" "${self}.bak" 2>/dev/null || true
     cat "$tmp" > "$self"
     rm -f "$tmp"
-    chmod +x "$self"
+    chmod 755 "$self"
     log_info "升级脚本成功（旧版已备份为 ${self}.bak），请重新运行脚本"
     exit 0
 }
@@ -498,7 +498,7 @@ show_menu() {
         4) check_installed && do_start; before_show_menu ;;
         5) check_installed && do_stop; before_show_menu ;;
         6) check_installed && do_restart; before_show_menu ;;
-        7) check_installed && do_status ;;
+        7) check_installed && do_status; before_show_menu ;;
         8) check_installed && show_log ;;
         9) check_installed && do_enable; before_show_menu ;;
         10) check_installed && do_disable; before_show_menu ;;
@@ -522,6 +522,10 @@ main() {
     fi
 
     case $1 in
+        help|-h|--help)
+            show_usage
+            return 0
+            ;;
         # 以下为管理命令，需要 root 权限
         start|stop|restart|status|enable|disable|log|update|config|install|uninstall|version|update_shell)
             need_root

@@ -78,17 +78,27 @@ REALITY 的每个字段独立取值，前一层没给就往下走：
 
 * `mode` 支持 `auto` / `packet-up` / `stream-up` / `stream-one`，留空时使用 xray 默认的 `auto`；非法取值会被 xray 拒绝启动。
 * 服务端 `host` 留空即不校验 Host 头；非空时与请求 Host **精确匹配**（大小写不敏感、忽略端口），不匹配直接拒绝连接。
+* 面板下发的 `xhttp_host` / `xhttp_path` / `xhttp_mode` **优先于** `host` / `path` / `mode`（与面板生成 VLESS 链接、Clash、V2Ray JSON 订阅的取值链一致），仅当 `network` 为 `xhttp` / `splithttp` 时生效，其它传输仍只读 `host` / `path` / `mode`。
 
 `host` 的填法：
 
-| 场景 | `host` |
+| 场景 | `host` / `xhttp_host` |
 | :--- | :--- |
 | xhttp + REALITY | 留空，或与 `sni` 一致 |
 | xhttp + TLS | 自己的域名 |
-| 前面套 CDN | CDN 回源时携带的域名 |
+| 前面套 CDN，客户端 Host 与回源 Host 相同 | 都填 CDN 域名 |
+| 前面套 CDN，客户端 Host 与回源 Host 不同 | `host` 填 CDN 域名（客户端伪装用），`xhttp_host` 填 CDN 回源时携带的域名 |
 | 服务端多域名复用 | 该节点对应的域名 |
 
 注意不要带端口，也不支持通配符。
+
+### 套 CDN 时的要点
+
+* 服务端校验的是**回源到源站时携带的 Host**，所以 `xhttp_host`（不填时用 `host`）必须与 CDN 回源 Host 一致，否则 xhttp 入站直接返回 404。
+* 若 CDN 回源会改写 Host（常见于「回源域名 ≠ 加速域名」），务必单独填 `xhttp_host`；两者相同则可以只填 `host`。
+* `path` 与 `xhttp_path` 同理：`xhttp_path` 不填时用 `path`，服务端按该值做前缀匹配。CDN 侧若配置了回源路径改写，需保证与这里一致。
+* `mode` 与 `xhttp_mode`：服务端 `auto` 最宽松（放行全部模式）；一旦下发成 `packet-up` / `stream-up`，客户端用别的模式会被 400。不确定就保持 `auto`。
+* 面板节点需 `security: tls`、`enable_reality: false`（REALITY 不能套 CDN）；源站证书按 `config.yml` 的 `CertConfig` 配置，ALPN 未下发时 xray 默认 `h2` + `http/1.1`，CDN 走 HTTP/2 回源无需额外设置。
 
 ## X25519MLKEM768（后量子密钥交换）
 

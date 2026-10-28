@@ -49,6 +49,8 @@ A Xray backend framework that can easily support many panels.
 * 支持 `network: xhttp`（等同 `splithttp`），`path`、`host`、`mode` 均可由面板下发。
 * `mode` 支持 `auto` / `packet-up` / `stream-up` / `stream-one`，留空时使用 xray 默认的 `auto`。
 * 服务端 `host` 留空即不校验 Host 头；非空时与请求 Host 精确匹配（大小写不敏感、忽略端口）。REALITY 场景建议留空或与 SNI 一致。
+* 面板下发的 `xhttp_host` / `xhttp_path` / `xhttp_mode` 优先于 `host` / `path` / `mode`（与面板订阅的取值链一致），仅在 `network` 为 `xhttp` / `splithttp` 时生效。
+* 套 CDN 时服务端校验的是**回源 Host**：客户端 Host 与回源 Host 不同时，`host` 填 CDN 域名、`xhttp_host` 填回源域名；只填 `host` 时两者必须相同。详见 [`docs/gong-neng-shuo-ming/reality-xhttp-pq.md`](docs/gong-neng-shuo-ming/reality-xhttp-pq.md)。
 
 ### X25519MLKEM768（后量子密钥交换）
 

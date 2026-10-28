@@ -19,6 +19,11 @@ MANAGER_BIN_LOWER="/usr/bin/xrayr"
 SYSCTL_CONF="/etc/sysctl.conf"
 cur_dir=$(pwd)
 
+# 系统类型/版本：check_os 会填值；先给默认值，避免 set -u 下未赋值报 "unbound variable"
+release=""
+os_version=""
+os_major=""
+
 # ==================== 日志函数 ====================
 log_info()    { echo -e "${green}$*${plain}" >&2; }
 log_warn()    { echo -e "${yellow}$*${plain}" >&2; }
@@ -93,31 +98,37 @@ check_os() {
         fi
     fi
 
-    # 检测系统版本号
+    # 检测系统版本号（取主版本号，比较时必须是纯数字，否则 [[ -lt ]] 会算术报错）
     os_version=""
     if [[ -f /etc/os-release ]]; then
-        os_version=$(awk -F'[= ."]' '/VERSION_ID/{print $3}' /etc/os-release)
+        os_version=$(. /etc/os-release 2>/dev/null; printf '%s' "${VERSION_ID:-}")
     fi
     if [[ -z "$os_version" && -f /etc/lsb-release ]]; then
-        os_version=$(awk -F'[= ."]+' '/DISTRIB_RELEASE/{print $2}' /etc/lsb-release)
+        os_version=$(. /etc/lsb-release 2>/dev/null; printf '%s' "${DISTRIB_RELEASE:-}")
+    fi
+    os_major="${os_version%%.*}"
+    [[ "$os_major" =~ ^[0-9]+$ ]] || os_major=""
+
+    if [[ -n "$os_major" ]]; then
+        if [[ x"${release}" == x"centos" ]]; then
+            if (( os_major <= 6 )); then
+                log_error "请使用 CentOS 7 或更高版本的系统！"
+                exit 1
+            fi
+        elif [[ x"${release}" == x"ubuntu" ]]; then
+            if (( os_major < 16 )); then
+                log_error "请使用 Ubuntu 16 或更高版本的系统！"
+                exit 1
+            fi
+        elif [[ x"${release}" == x"debian" ]]; then
+            if (( os_major < 8 )); then
+                log_error "请使用 Debian 8 或更高版本的系统！"
+                exit 1
+            fi
+        fi
     fi
 
-    if [[ x"${release}" == x"centos" ]]; then
-        if [[ ${os_version} -le 6 ]]; then
-            log_error "请使用 CentOS 7 或更高版本的系统！"
-            exit 1
-        fi
-    elif [[ x"${release}" == x"ubuntu" ]]; then
-        if [[ ${os_version} -lt 16 ]]; then
-            log_error "请使用 Ubuntu 16 或更高版本的系统！"
-            exit 1
-        fi
-    elif [[ x"${release}" == x"debian" ]]; then
-        if [[ ${os_version} -lt 8 ]]; then
-            log_error "请使用 Debian 8 或更高版本的系统！"
-            exit 1
-        fi
-    elif [[ x"${release}" == x"alpine" ]]; then
+    if [[ x"${release:-}" == x"alpine" ]]; then
         # Alpine 无最低版本限制，仅提示
         log_info "检测到 Alpine 系统，将使用 OpenRC 管理服务。"
     fi
@@ -155,15 +166,17 @@ detect_arch() {
 # ==================== 基础安装 ====================
 install_base() {
     if [[ x"${release}" == x"centos" ]]; then
-        yum install epel-release -y
-        yum install wget curl unzip tar crontabs socat -y
+        yum install epel-release -y || log_warn "安装 epel-release 失败，继续尝试"
+        yum install wget curl unzip tar crontabs socat -y || log_warn "依赖安装失败，继续尝试"
     elif [[ x"${release}" == x"alpine" ]]; then
         # Alpine 使用 apk，OpenRC 自带 crond（busybox），无需额外 cron 包
-        apk update
-        apk add wget curl unzip tar socat bash
+        apk update || log_warn "apk update 失败，继续尝试"
+        apk add wget curl unzip tar socat bash || log_warn "依赖安装失败，继续尝试"
     else
-        apt update -y
-        apt install wget curl unzip tar cron socat -y
+        # 用 apt-get 而不是 apt，避免 "apt does not have a stable CLI interface" 警告
+        apt-get update -y || log_warn "软件源更新失败，继续尝试"
+        apt-get install -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
+            wget curl unzip tar cron socat || log_warn "依赖安装失败，继续尝试"
     fi
 }
 
@@ -245,21 +258,42 @@ backup_sysctl_conf() {
     backup="${SYSCTL_CONF}.bak.XrayR.$(date +%Y%m%d%H%M%S)"
     cp -a "$SYSCTL_CONF" "$backup"
     log_info "已备份 ${SYSCTL_CONF} 到 ${backup}"
+    # 只保留最近 5 份备份，避免反复安装/优化把磁盘塞满
+    ls -1t "${SYSCTL_CONF}".bak.XrayR.* 2>/dev/null | tail -n +6 | while IFS= read -r f; do
+        rm -f "$f"
+    done
 }
 
+# 返回可用/正在使用的拥塞控制算法：bbrplus / bbr / 空
 detect_congestion_control() {
     local current available
     current="$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || true)"
-    available="$(cat /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null || true)"
     if [[ "$current" == "bbrplus" ]]; then
         echo "bbrplus"
         return 0
     fi
-    if echo "$available" | grep -q " bbr "; then
+    available="$(cat /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null || true)"
+    # 很多系统只是没加载 tcp_bbr 模块，先尝试加载再判断，否则会误报"内核不支持 BBR"
+    if ! echo "$available" | tr ' ' '\n' | grep -qx "bbr"; then
+        modprobe tcp_bbr >/dev/null 2>&1 || true
+        available="$(cat /proc/sys/net/ipv4/tcp_available_congestion_control 2>/dev/null || true)"
+    fi
+    # 按空格拆词精确匹配：用 " bbr " 匹配会漏掉排在最后一项的情况
+    if echo "$available" | tr ' ' '\n' | grep -qx "bbr"; then
         echo "bbr"
         return 0
     fi
     echo ""
+}
+
+# 把 bbr 模块写进开机加载列表，避免重启后又退回 cubic
+persist_bbr_module() {
+    local conf="/etc/modules-load.d/xrayr-bbr.conf"
+    [[ -d /etc/modules-load.d ]] || return 0
+    if ! grep -qx "tcp_bbr" "$conf" 2>/dev/null; then
+        echo "tcp_bbr" > "$conf"
+        log_info "已设置开机自动加载 tcp_bbr（${conf}）"
+    fi
 }
 
 clean_sysctl_duplicates() {
@@ -279,8 +313,13 @@ clean_sysctl_duplicates() {
         print
     }
     ' "$SYSCTL_CONF" > "$tmp"
-    cat "$tmp" > "$SYSCTL_CONF"
-    rm -f "$tmp"
+    # 折叠连续空行：反复安装时每次都会多留一个空行，久了文件里全是空行
+    awk '
+    /^[ \t]*$/ { blank++; if (blank <= 1) print; next }
+    { blank = 0; print }
+    ' "$tmp" > "${tmp}.2"
+    cat "${tmp}.2" > "$SYSCTL_CONF"
+    rm -f "$tmp" "${tmp}.2"
 }
 
 append_sysctl_optimization() {
@@ -319,11 +358,12 @@ optimize_network() {
     clean_sysctl_duplicates
     cc="$(detect_congestion_control)"
     if [[ -z "$cc" ]]; then
-        log_warn "当前内核未检测到 bbr，跳过 tcp_congestion_control 设置。"
+        log_warn "当前内核未检测到 bbr（模块可能不可用），跳过 tcp_congestion_control 设置。"
     elif [[ "$cc" == "bbrplus" ]]; then
         log_info "检测到已使用 bbrplus，保留现有拥塞控制。"
     else
         log_info "检测到内核支持 bbr，启用原生 BBR。"
+        persist_bbr_module
     fi
     append_sysctl_optimization "$cc"
     apply_sysctl_optimization
@@ -356,7 +396,9 @@ install_manager() {
     fi
 
     mv -f "$tmp" "$MANAGER_BIN"
-    chmod +x "$MANAGER_BIN"
+    # mktemp 建的文件是 600，mv 后 chmod +x 只会得到 711，普通用户连脚本都读不了，
+    # 而「未识别参数透传给二进制」是刻意支持非 root 使用的，所以这里必须给 755
+    chmod 755 "$MANAGER_BIN"
     ln -sf "$MANAGER_BIN" "$MANAGER_BIN_LOWER"
     log_info "管理脚本已安装到 ${MANAGER_BIN}"
 }
@@ -386,7 +428,7 @@ write_default_config() {
     fi
     cat > "$CONFIG_DIR/config.yml" <<'EOF'
 Log:
-  Level: debug # 日志级别：none / error / warning / info / debug，debug 会刷很多日志
+  Level: warning  # 日志级别：none / error / warning / info / debug，debug 会刷很多日志
   AccessPath: # 访问日志文件路径，例如 /etc/XrayR/access.log；留空=不单独记录
   ErrorPath: # 错误日志文件路径，例如 /etc/XrayR/error.log；留空=不单独记录
 DnsConfigPath: # 自定义 DNS 配置文件（dns.json）路径，例如 /etc/XrayR/dns.json；留空=用内置默认
@@ -501,7 +543,7 @@ svc_disable() {
 
 # ==================== 安装主流程 ====================
 install_xrayr() {
-    local version url
+    local version url tmp
     version="$(normalize_version "${1:-}")"
     url="https://github.com/${OWNER}/${REPO}/releases/download/${version}/$(detect_arch)"
 
@@ -511,21 +553,33 @@ install_xrayr() {
 
     install_base
 
+    # 先下载到临时文件并校验，确认可用后再停服务、替换二进制。
+    # 否则版本号写错 / 网络中断会把已有安装清空，节点直接停摆。
+    tmp="${INSTALL_DIR}.new.$$"
+    # 注意用 ${tmp:-}：tmp 是 local，函数返回后 EXIT trap 里变量已失效，set -u 会报 unbound
+    trap 'rm -f "${tmp:-}"' EXIT
+    if ! download_file "$url" "$tmp"; then
+        log_error "下载 XrayR 失败，请检查网络或版本是否存在（现有安装未改动）。"
+        exit 1
+    fi
+    if [[ ! -s "$tmp" ]]; then
+        log_error "下载的文件为空，${version} 可能不存在（现有安装未改动）。"
+        exit 1
+    fi
+    if ! chmod +x "$tmp" || ! "$tmp" version >/dev/null 2>&1; then
+        log_error "下载的文件无法运行，可能不是本机架构的二进制（现有安装未改动）。"
+        exit 1
+    fi
+
     # 停止已有服务
     svc_stop
 
     # 清理并创建安装目录
     rm -rf "$INSTALL_DIR"
     mkdir -p "$INSTALL_DIR"
-    cd "$INSTALL_DIR"
-
-    # 下载
-    if ! wget -q --no-check-certificate -O "${INSTALL_DIR}/XrayR" "${url}"; then
-        log_error "下载 XrayR 失败，请检查网络或版本是否存在。"
-        exit 1
-    fi
-
+    mv -f "$tmp" "${INSTALL_DIR}/XrayR"
     chmod +x "${INSTALL_DIR}/XrayR"
+    cd "$INSTALL_DIR"
 
     # 配置目录
     mkdir -p "$CONFIG_DIR"
@@ -631,6 +685,7 @@ main() {
             ;;
         uninstall)
             need_root
+            check_os          # 需要 release 判断 systemd / OpenRC
             uninstall_xrayr
             ;;
         version)
