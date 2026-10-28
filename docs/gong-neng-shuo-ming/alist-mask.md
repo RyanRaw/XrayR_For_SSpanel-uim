@@ -7,7 +7,13 @@ bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/
   --domain ro.example.com --path /steam --upstream 127.0.0.1:21074
 ```
 
-也可以直接用独立脚本（参数完全相同）：
+也可以在已装好 XrayR 的机器上走管理脚本（菜单 `17`，或带参数直接调用）：
+
+```bash
+XrayR mask --domain ro.example.com --path /steam --upstream 127.0.0.1:21074
+```
+
+或者是直接用独立脚本（参数完全相同）：
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/RyanRaw/XrayR_For_SSpanel-uim/master/install/alist-mask.sh) --help

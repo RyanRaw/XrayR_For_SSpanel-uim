@@ -11,7 +11,7 @@ OWNER="RyanRaw"
 REPO="XrayR_For_SSpanel-uim"
 SCRIPT_REPO="XrayR_For_SSpanel-uim"  # 脚本和 release 在同一个仓库
 # 脚本配套版本标记：install.sh 与 XrayR.sh 必须一致，用于发现 CDN 缓存滞后（见 install_manager）
-SCRIPT_VERSION="20261028"
+SCRIPT_VERSION="20261028b"
 
 INSTALL_DIR="/usr/local/XrayR"
 CONFIG_DIR="/etc/XrayR"

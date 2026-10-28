@@ -8,7 +8,7 @@ plain='\033[0m'
 version="v1.0.0"
 # 脚本配套版本标记：必须与 install.sh 中的 SCRIPT_VERSION 保持一致，
 # 用来发现 CDN 缓存滞后（jsDelivr 偶发卡住单个文件的 @master 缓存）
-SCRIPT_VERSION="20261028"
+SCRIPT_VERSION="20261028b"
 
 # ==================== 常量 ====================
 INSTALL_DIR="/usr/local/XrayR"
@@ -361,6 +361,61 @@ do_ssh() {
     return $rc
 }
 
+do_mask() {
+    # AList 伪装站 + 反代加固：真正的活由独立脚本 install/alist-mask.sh 干，
+    # 这里只负责拉最新版（purge → CDN → 源站 → bash -n）并在无参数时做几个交互提问。
+    local tmp url ok=0 domain xpath upstream admin_ip
+    tmp="$(mktemp 2>/dev/null || echo "/tmp/alist-mask.sh.$$")"
+
+    log_info "正在拉取伪装站脚本..."
+    purge_jsdelivr "install/alist-mask.sh"
+
+    for url in "${SCRIPT_CDN_BASE}/install/alist-mask.sh" "${SCRIPT_RAW_BASE}/install/alist-mask.sh"; do
+        if download_file "$url" "$tmp" && [[ -s "$tmp" ]] && bash -n "$tmp" 2>/dev/null; then
+            ok=1
+            break
+        fi
+    done
+
+    if [[ "$ok" != "1" ]]; then
+        rm -f "$tmp"
+        log_error "下载伪装站脚本失败，请检查网络后重试"
+        return 1
+    fi
+
+    # 带参数时原样透传（XrayR mask --domain ... 便于脚本化）
+    if [[ $# -gt 0 ]]; then
+        bash "$tmp" "$@"
+        local rc=$?
+        rm -f "$tmp"
+        return $rc
+    fi
+
+    echo ""
+    echo -e "  ${green}AList 伪装站${plain}：xhttp 路径转给后端，其余请求落到只读文件站，"
+    echo -e "  管理入口按 IP 白名单收起来；80 与 443 会同时监听，兼容 CDN 各种回源模式。"
+    echo ""
+    read -p "  域名（如 ro.example.com，留空取消）: " domain
+    if [[ -z "$domain" ]]; then
+        rm -f "$tmp"
+        log_info "已取消。"
+        return 0
+    fi
+    read -p "  xhttp 路径 [/steam]: " xpath
+    xpath="${xpath:-/steam}"
+    read -p "  后端 xhttp 入站地址 [127.0.0.1:21074]: " upstream
+    upstream="${upstream:-127.0.0.1:21074}"
+    read -p "  管理入口白名单 IP（逗号分隔，留空=仅本机）: " admin_ip
+
+    local -a args=(--domain "$domain" --path "$xpath" --upstream "$upstream" -y)
+    [[ -n "$admin_ip" ]] && args+=(--admin-ip "$admin_ip")
+
+    bash "$tmp" "${args[@]}"
+    local rc=$?
+    rm -f "$tmp"
+    return $rc
+}
+
 update_shell() {
     local self tmp url ok=0 cur_marker new_marker
     self="$(readlink -f "$0")"
@@ -461,6 +516,8 @@ show_usage() {
     echo "XrayR install      - 安装 XrayR"
     echo "XrayR uninstall    - 卸载 XrayR"
     echo "XrayR version      - 查看 XrayR 版本"
+    echo "XrayR mask         - 搭建 AList 伪装站 + 反代加固 (XHTTP + CDN)"
+    echo "XrayR mask --help  - 查看伪装站脚本参数"
     echo "------------------------------------------"
     echo "未识别的参数会原样透传给 XrayR 二进制，例如: "
     echo "XrayR mldsa65      - 生成 ML-DSA-65 密钥对 (REALITY)"
@@ -497,11 +554,12 @@ show_menu() {
  ${green}15.${plain} 生成 ML-DSA-65 密钥对 (REALITY 后量子)
 ————————————————
  ${green}16.${plain} SSH 安全设置 (端口 / 密钥 / 密码登录 / 转发)
+ ${green}17.${plain} 搭建 AList 伪装站 (XHTTP + CDN，含反代加固)
 ————————————————
  ${green}q.${plain} 退出
 "
     show_status
-    echo && read -p "请输入选择 [0-16]，或 q 退出: " num
+    echo && read -p "请输入选择 [0-17]，或 q 退出: " num
 
     case "${num}" in
         0) edit_config; before_show_menu ;;
@@ -521,8 +579,9 @@ show_menu() {
         14) check_installed && do_x25519; before_show_menu ;;
         15) check_installed && do_mldsa65; before_show_menu ;;
         16) do_ssh; before_show_menu ;;
+        17) do_mask; before_show_menu ;;
         q|Q) log_info "已退出。"; exit 0 ;;
-        *) echo -e "${red}请输入正确的数字 [0-16]，或输入 q 退出${plain}" && before_show_menu ;;
+        *) echo -e "${red}请输入正确的数字 [0-17]，或输入 q 退出${plain}" && before_show_menu ;;
     esac
 }
 
@@ -540,7 +599,7 @@ main() {
             return 0
             ;;
         # 以下为管理命令，需要 root 权限
-        start|stop|restart|status|enable|disable|log|update|config|install|uninstall|version|update_shell)
+        start|stop|restart|status|enable|disable|log|update|config|install|uninstall|version|update_shell|mask|alist)
             need_root
             ;;
         *)
@@ -564,6 +623,7 @@ main() {
         uninstall) check_installed && do_uninstall ;;
         version)   show_xrayr_version ;;
         update_shell) update_shell ;;
+        mask|alist) do_mask "${@:2}" ;;
     esac
 }
 
