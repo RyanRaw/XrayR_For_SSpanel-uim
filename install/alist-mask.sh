@@ -3,7 +3,7 @@
 # AList 伪装站 + 反代加固（供 XHTTP + CDN 节点使用）
 #
 # 做的事：
-#   1. 装 nginx / jq 等依赖
+#   1. 装 nginx / openssl / jq 等依赖
 #   2. 装 AList（只读文件站，作为伪装首页），只监听 127.0.0.1
 #   3. nginx 按路径分流：<xhttp 路径> -> 后端 XrayR，其余 -> AList
 #   4. 加固：管理入口 + /dav 按 IP 白名单（非白名单直接 404）、
@@ -18,8 +18,9 @@
 #   --domain <域名[,域名]>   必填，nginx server_name
 #   --path <路径>            xhttp 路径前缀，默认 /steam
 #   --upstream <ip:port>     后端 XrayR 明文入站，默认 127.0.0.1:21074
-#   --cert <文件>            证书 fullchain（不给则自签，Full(strict) 需真实证书）
-#   --key <文件>             私钥
+#   --cert <文件>            证书 fullchain（不传则交互选择：输入已有 / 生成自签）
+#   --key <文件>             私钥（必须与 --cert 成对）
+#   --self-signed            直接生成自签证书，不交互
 #   --admin-ip <ip[,ip]>     管理入口白名单，默认只允许本机（127.0.0.1）
 #   --alist-port <端口>      AList 监听端口，默认 5244
 #   --extra-port <端口>      额外的 HTTPS 监听端口（如 21073），默认不加
@@ -53,6 +54,7 @@ XHTTP_PATH="/steam"
 UPSTREAM="127.0.0.1:21074"
 CERT_SRC=""
 KEY_SRC=""
+CERT_MODE="auto"   # auto | input | self | reuse
 ADMIN_IPS=""
 ALIST_PORT="5244"
 EXTRA_HTTPS_PORT=""
@@ -61,7 +63,7 @@ FORCE=0
 ASSUME_YES=0
 
 usage() {
-    sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,31p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
 }
 
@@ -72,6 +74,7 @@ while [[ $# -gt 0 ]]; do
         --upstream)    UPSTREAM="${2:-}"; shift 2 ;;
         --cert)        CERT_SRC="${2:-}"; shift 2 ;;
         --key)         KEY_SRC="${2:-}"; shift 2 ;;
+        --self-signed) CERT_MODE="self"; shift ;;
         --admin-ip)    ADMIN_IPS="${2:-}"; shift 2 ;;
         --alist-port)  ALIST_PORT="${2:-}"; shift 2 ;;
         --extra-port)  EXTRA_HTTPS_PORT="${2:-}"; shift 2 ;;
@@ -165,29 +168,202 @@ nginx_site_dir() {
     fi
 }
 
+validate_cert_pair() {
+    local cert="$1" key="$2" cpub kpub
+    [[ -f "$cert" && -r "$cert" ]] || { log_error "证书文件不存在或不可读：${cert}"; return 1; }
+    [[ -f "$key"  && -r "$key"  ]] || { log_error "私钥文件不存在或不可读：${key}"; return 1; }
+    openssl x509 -in "$cert" -noout >/dev/null 2>&1 \
+        || { log_error "证书解析失败（需要 PEM 格式，fullchain 亦可）：${cert}"; return 1; }
+    openssl pkey -in "$key" -noout >/dev/null 2>&1 \
+        || { log_error "私钥解析失败（需要未加密的 PEM 私钥）：${key}"; return 1; }
+    cpub="$(openssl x509 -in "$cert" -noout -pubkey 2>/dev/null \
+        | openssl pkey -pubin -outform der 2>/dev/null \
+        | openssl dgst -sha256 2>/dev/null | awk '{print $NF}')"
+    kpub="$(openssl pkey -in "$key" -pubout -outform der 2>/dev/null \
+        | openssl dgst -sha256 2>/dev/null | awk '{print $NF}')"
+    if [[ -z "$cpub" || "$cpub" != "$kpub" ]]; then
+        log_error "证书与私钥不匹配：${cert} / ${key}"
+        return 1
+    fi
+    return 0
+}
+
+generate_self_signed() {
+    local primary="${DOMAINS%%,*}" san="DNS:${primary}" d days=3650
+    IFS=',' read -ra _ds <<< "$DOMAINS"
+    for d in "${_ds[@]}"; do
+        d="${d// /}"
+        [[ -z "$d" ]] && continue
+        [[ ",${san}," == *",DNS:${d},"* ]] && continue
+        san+=",DNS:${d}"
+    done
+
+    log_warn "生成自签证书：CN=${primary}，SAN=${san}，有效期 ${days} 天"
+    log_warn "自签只适合直连测试或 CDN Flexible/Full 回源；Full(strict) 必须用真实证书"
+    if ! openssl req -x509 -nodes -newkey rsa:2048 -days "$days" \
+            -keyout "${SSL_DIR}/privkey.pem" -out "${SSL_DIR}/fullchain.pem" \
+            -subj "/CN=${primary}" \
+            -addext "subjectAltName=${san}" >/dev/null 2>&1; then
+        # 旧版 openssl 可能不支持 -addext，退化为仅 CN
+        if ! openssl req -x509 -nodes -newkey rsa:2048 -days "$days" \
+                -keyout "${SSL_DIR}/privkey.pem" -out "${SSL_DIR}/fullchain.pem" \
+                -subj "/CN=${primary}" >/dev/null 2>&1; then
+            log_error "自签证书生成失败，443 将不可用（可用 --cert/--key 指定真实证书）"
+            return 1
+        fi
+        log_warn "openssl 不支持 -addext，已生成仅含 CN 的自签证书（无 SAN，部分 CDN 会拒绝）"
+    fi
+    chmod 600 "${SSL_DIR}/privkey.pem" 2>/dev/null || true
+    chmod 644 "${SSL_DIR}/fullchain.pem" 2>/dev/null || true
+    log_info "已生成自签证书：${SSL_DIR}/fullchain.pem"
+}
+
+# 先录入路径（校验放到 openssl 安装完成之后），回车则改为自签
+read_cert_paths_raw() {
+    local cert key
+    read -rp "证书 fullchain 路径（回车改用自签）：" cert || cert=""
+    read -rp "私钥路径（回车改用自签）：" key || key=""
+    cert="${cert%\"}"; cert="${cert#\"}"
+    key="${key%\"}"; key="${key#\"}"
+    if [[ -z "$cert" || -z "$key" ]]; then
+        log_warn "路径不完整，改为生成自签证书"
+        CERT_MODE="self"
+        return 0
+    fi
+    CERT_SRC="$cert"
+    KEY_SRC="$key"
+}
+
+# 交互选择证书来源（在确认清单之前调用，方便用户看到最终选择）
+choose_cert_mode() {
+    if [[ -n "$CERT_SRC" || -n "$KEY_SRC" ]]; then
+        CERT_MODE="input"
+        return 0
+    fi
+    if [[ "$CERT_MODE" == "self" || "$CERT_MODE" == "reuse" ]]; then
+        return 0
+    fi
+    if [[ "$ASSUME_YES" == "1" || ! -t 0 ]]; then
+        CERT_MODE="auto"
+        return 0
+    fi
+
+    SSL_DIR="${SSL_ROOT}/${DOMAINS%%,*}"
+    local has_local=0
+    [[ -f "${SSL_DIR}/fullchain.pem" && -f "${SSL_DIR}/privkey.pem" ]] && has_local=1
+
+    echo ""
+    echo "证书处理方式："
+    echo "  1) 输入已有证书与私钥路径（CDN 用 Full(strict) 回源请选这个）"
+    echo "  2) 生成自签证书（仅直连测试 / Flexible、Full 回源）"
+    if [[ "$has_local" == "1" ]]; then
+        echo "  3) 沿用本机已有证书（${SSL_DIR}）"
+    else
+        echo "  3) 自动：有可用证书就沿用，没有则生成自签"
+    fi
+    local ans
+    read -rp "请选择 [1/2/3，回车默认 3]：" ans || ans=""
+    case "$ans" in
+        1) CERT_MODE="input"; read_cert_paths_raw ;;
+        2) CERT_MODE="self" ;;
+        *) if [[ "$has_local" == "1" ]]; then CERT_MODE="reuse"; else CERT_MODE="auto"; fi ;;
+    esac
+    return 0
+}
+
+cert_mode_desc() {
+    case "$CERT_MODE" in
+        input) echo "交互输入已有证书（${CERT_SRC:-待输入}）" ;;
+        self)  echo "生成自签证书" ;;
+        reuse) echo "沿用本机已有证书" ;;
+        *)     echo "自动（有可用证书则沿用，否则自签）" ;;
+    esac
+}
+
+# 交互录入证书路径，最多重试 3 次
+prompt_cert_paths() {
+    local i cert key
+    for i in 1 2 3; do
+        read -rp "证书 fullchain 路径（回车改用自签）：" cert || cert=""
+        if [[ -z "$cert" ]]; then
+            log_warn "未输入证书，改为生成自签证书"
+            CERT_MODE="self"
+            return 0
+        fi
+        read -rp "私钥路径（回车改用自签）：" key || key=""
+        if [[ -z "$key" ]]; then
+            log_warn "未输入私钥，改为生成自签证书"
+            CERT_MODE="self"
+            return 0
+        fi
+        cert="${cert%\"}"; cert="${cert#\"}"
+        key="${key%\"}"; key="${key#\"}"
+        if validate_cert_pair "$cert" "$key"; then
+            CERT_SRC="$cert"
+            KEY_SRC="$key"
+            CERT_MODE="input"
+            return 0
+        fi
+        log_warn "校验未通过，请重新输入（第 ${i}/3 次）"
+    done
+    log_error "证书多次校验失败，已退出（可改用 --cert/--key 或 --self-signed）"
+    exit 1
+}
+
 install_certs() {
     local primary="${DOMAINS%%,*}"
     SSL_DIR="${SSL_ROOT}/${primary}"
     mkdir -p "$SSL_DIR"
     chmod 755 "$SSL_DIR"
 
-    if [[ -n "$CERT_SRC" && -n "$KEY_SRC" ]]; then
-        [[ -f "$CERT_SRC" && -f "$KEY_SRC" ]] || { log_error "证书或私钥文件不存在"; exit 1; }
-        cp -f "$CERT_SRC" "${SSL_DIR}/fullchain.pem"
-        cp -f "$KEY_SRC"  "${SSL_DIR}/privkey.pem"
-        log_info "已安装证书：${SSL_DIR}/fullchain.pem"
-    elif [[ -f "${SSL_DIR}/fullchain.pem" && -f "${SSL_DIR}/privkey.pem" ]]; then
-        log_info "沿用已有证书：${SSL_DIR}"
-    else
-        log_warn "未提供证书，生成自签证书（CDN 用 Full(strict) 时必须换成真实证书）：${SSL_DIR}"
-        openssl req -x509 -nodes -newkey rsa:2048 -days 3650 \
-            -keyout "${SSL_DIR}/privkey.pem" -out "${SSL_DIR}/fullchain.pem" \
-            -subj "/CN=${primary}" \
-            -addext "subjectAltName=DNS:${primary}" >/dev/null 2>&1 \
-        || log_warn "自签证书生成失败，443 将不可用"
-    fi
-    chmod 600 "${SSL_DIR}/privkey.pem" 2>/dev/null || true
-    chmod 644 "${SSL_DIR}/fullchain.pem" 2>/dev/null || true
+    case "$CERT_MODE" in
+        input)
+            if [[ -n "$CERT_SRC" && -n "$KEY_SRC" ]]; then
+                if ! validate_cert_pair "$CERT_SRC" "$KEY_SRC"; then
+                    if [[ -t 0 ]]; then
+                        prompt_cert_paths
+                    else
+                        exit 1
+                    fi
+                fi
+            elif [[ -n "$CERT_SRC" || -n "$KEY_SRC" ]]; then
+                log_error "证书与私钥必须成对指定（--cert 与 --key）"
+                [[ -t 0 ]] && prompt_cert_paths || exit 1
+            elif [[ -t 0 ]]; then
+                prompt_cert_paths
+            else
+                log_error "非交互模式需用 --cert 与 --key 指定证书，或加 --self-signed"
+                exit 1
+            fi
+            if [[ "$CERT_MODE" == "self" ]]; then
+                generate_self_signed || exit 1
+            else
+                cp -f "$CERT_SRC" "${SSL_DIR}/fullchain.pem" || { log_error "复制证书失败：$CERT_SRC"; exit 1; }
+                cp -f "$KEY_SRC"  "${SSL_DIR}/privkey.pem"  || { log_error "复制私钥失败：$KEY_SRC"; exit 1; }
+                chmod 600 "${SSL_DIR}/privkey.pem"  2>/dev/null || true
+                chmod 644 "${SSL_DIR}/fullchain.pem" 2>/dev/null || true
+                log_info "已安装证书：${SSL_DIR}/fullchain.pem"
+            fi
+            ;;
+        self)
+            generate_self_signed || exit 1
+            ;;
+        reuse)
+            validate_cert_pair "${SSL_DIR}/fullchain.pem" "${SSL_DIR}/privkey.pem" || {
+                log_error "没有可沿用的有效证书：${SSL_DIR}（可用 --cert/--key 指定，或改用 --self-signed）"
+                exit 1
+            }
+            log_info "沿用已有证书：${SSL_DIR}"
+            ;;
+        *)
+            if [[ -f "${SSL_DIR}/fullchain.pem" && -f "${SSL_DIR}/privkey.pem" ]] \
+                && validate_cert_pair "${SSL_DIR}/fullchain.pem" "${SSL_DIR}/privkey.pem"; then
+                log_info "沿用已有证书：${SSL_DIR}"
+            else
+                generate_self_signed || exit 1
+            fi
+            ;;
+    esac
 }
 
 write_realip_conf() {
@@ -568,10 +744,13 @@ main() {
         exit 1
     fi
 
+    choose_cert_mode
+
     echo "即将执行："
     echo "  域名        : ${DOMAINS}"
     echo "  xhttp 路径  : ${XHTTP_PATH}  ->  ${UPSTREAM}"
     echo "  伪装站      : $([[ "$WITH_ALIST" == "1" ]] && echo "AList（只读，127.0.0.1:${ALIST_PORT}）" || echo "不安装")"
+    echo "  证书        : $(cert_mode_desc)"
     echo "  管理白名单  : ${ADMIN_IPS:-仅本机 127.0.0.1}"
     echo "  额外 HTTPS  : ${EXTRA_HTTPS_PORT:-无}"
     echo ""
