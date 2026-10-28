@@ -6,6 +6,9 @@ yellow='\033[0;33m'
 plain='\033[0m'
 
 version="v1.0.0"
+# 脚本配套版本标记：必须与 install.sh 中的 SCRIPT_VERSION 保持一致，
+# 用来发现 CDN 缓存滞后（jsDelivr 偶发卡住单个文件的 @master 缓存）
+SCRIPT_VERSION="20261028"
 
 # ==================== 常量 ====================
 INSTALL_DIR="/usr/local/XrayR"
@@ -359,7 +362,7 @@ do_ssh() {
 }
 
 update_shell() {
-    local self tmp url ok=0
+    local self tmp url ok=0 cur_marker new_marker
     self="$(readlink -f "$0")"
     tmp="$(mktemp 2>/dev/null || echo "/tmp/XrayR.sh.$$")"
 
@@ -378,6 +381,16 @@ update_shell() {
     if [[ "$ok" != "1" ]]; then
         rm -f "$tmp"
         log_error "下载管理脚本失败，请检查网络后重试"
+        return 1
+    fi
+
+    # jsDelivr 的 @master 缓存偶尔会卡住单个文件（purge 返回 finished 也不生效），
+    # 这里比一下脚本版本标记，避免把新版维护脚本降级成旧版。
+    cur_marker="$(grep -m1 '^SCRIPT_VERSION=' "$self" 2>/dev/null | cut -d'"' -f2)"
+    new_marker="$(grep -m1 '^SCRIPT_VERSION=' "$tmp" 2>/dev/null | cut -d'"' -f2)"
+    if [[ -n "$cur_marker" && -n "$new_marker" && "$new_marker" < "$cur_marker" ]]; then
+        rm -f "$tmp"
+        log_warn "下载到的维护脚本（${new_marker}）比当前版本（${cur_marker}）旧，多半是 CDN 缓存滞后，已放弃替换。请稍后重试。"
         return 1
     fi
 

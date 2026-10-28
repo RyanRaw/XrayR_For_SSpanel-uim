@@ -51,6 +51,8 @@ A Xray backend framework that can easily support many panels.
 * 服务端 `host` 留空即不校验 Host 头；非空时与请求 Host 精确匹配（大小写不敏感、忽略端口）。REALITY 场景建议留空或与 SNI 一致。
 * 面板下发的 `xhttp_host` / `xhttp_path` / `xhttp_mode` 优先于 `host` / `path` / `mode`（与面板订阅的取值链一致），仅在 `network` 为 `xhttp` / `splithttp` 时生效。
 * 套 CDN 时服务端校验的是**回源 Host**：客户端 Host 与回源 Host 不同时，`host` 填 CDN 域名、`xhttp_host` 填回源域名；只填 `host` 时两者必须相同。详见 [`docs/gong-neng-shuo-ming/reality-xhttp-pq.md`](docs/gong-neng-shuo-ming/reality-xhttp-pq.md)。
+* **上下行默认不分离**：上行是 POST（`packet-up` 每片一个、`stream-up` 一条长 POST、`stream-one` 单连接双向），下行固定是一条长 GET（SSE 流），两者共用同一域名/端口/`path`。抓包看到「1 条长 GET + 若干 POST」是正常现象。
+* `mode: auto` 在无 REALITY（即套 CDN）时客户端落地为 `packet-up`；Xray 的 `downloadSettings`（把下行动到另一个目标）**本程序不支持**，面板 + XrayR 无法启用真·上下行分离。
 
 ### X25519MLKEM768（后量子密钥交换）
 

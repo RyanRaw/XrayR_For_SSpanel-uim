@@ -10,6 +10,8 @@ plain='\033[0m'
 OWNER="RyanRaw"
 REPO="XrayR_For_SSpanel-uim"
 SCRIPT_REPO="XrayR_For_SSpanel-uim"  # 脚本和 release 在同一个仓库
+# 脚本配套版本标记：install.sh 与 XrayR.sh 必须一致，用于发现 CDN 缓存滞后（见 install_manager）
+SCRIPT_VERSION="20261028"
 
 INSTALL_DIR="/usr/local/XrayR"
 CONFIG_DIR="/etc/XrayR"
@@ -374,24 +376,42 @@ optimize_network() {
 install_manager() {
     local cdn_url="https://cdn.jsdelivr.net/gh/${OWNER}/${SCRIPT_REPO}@master/install/XrayR.sh"
     local raw_url="https://raw.githubusercontent.com/${OWNER}/${SCRIPT_REPO}/master/install/XrayR.sh"
-    local tmp url ok=0
+    local tmp ok=0 marker
+    local marker="SCRIPT_VERSION=\"${SCRIPT_VERSION}\""
     tmp="$(mktemp 2>/dev/null || echo "${MANAGER_BIN}.tmp")"
 
     # 先清 jsDelivr 缓存，否则 @master 可能仍返回旧脚本
     curl -fsL --max-time 20 \
         "https://purge.jsdelivr.net/gh/${OWNER}/${SCRIPT_REPO}@master/install/XrayR.sh" >/dev/null 2>&1 || true
 
-    # CDN 优先，失败或内容异常时回退源站
-    for url in "$cdn_url" "$raw_url"; do
-        if download_file "$url" "$tmp" && [[ -s "$tmp" ]] && bash -n "$tmp" 2>/dev/null; then
-            ok=1
-            break
+    # 下载单个源：成功且语法校验通过才落到 $tmp（失败不留半截文件）
+    fetch_manager() {
+        local url="$1"
+        if download_file "$url" "${tmp}.part" && [[ -s "${tmp}.part" ]] && bash -n "${tmp}.part" 2>/dev/null; then
+            mv -f "${tmp}.part" "$tmp"
+            return 0
         fi
-    done
+        rm -f "${tmp}.part"
+        return 1
+    }
 
-    if [[ "$ok" != "1" ]]; then
+    # CDN 优先；但 jsDelivr 的 @master 缓存实测会卡住某个文件（同一提交下其它文件已是新版，
+    # 该文件却一直是旧版，且 purge 返回 finished 也不生效），所以用脚本内的版本标记校验，
+    # 对不上就回源 GitHub 重新获取，避免把旧维护脚本盖到系统上。
+    if fetch_manager "$cdn_url"; then
+        if ! grep -qF "$marker" "$tmp"; then
+            log_warn "CDN 上的维护脚本版本落后于安装脚本，回源 GitHub 重新获取。"
+            fetch_manager "$raw_url" || log_warn "回源失败，先使用 CDN 上已下载到的维护脚本。"
+        fi
+    elif ! fetch_manager "$raw_url"; then
         rm -f "$tmp"
         log_error "管理脚本下载失败！"
+        exit 1
+    fi
+
+    if [[ ! -s "$tmp" ]] || ! bash -n "$tmp" 2>/dev/null; then
+        rm -f "$tmp"
+        log_error "管理脚本下载失败（内容校验未通过）！"
         exit 1
     fi
 

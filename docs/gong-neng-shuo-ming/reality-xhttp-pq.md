@@ -100,6 +100,43 @@ REALITY 的每个字段独立取值，前一层没给就往下走：
 * `mode` 与 `xhttp_mode`：服务端 `auto` 最宽松（放行全部模式）；一旦下发成 `packet-up` / `stream-up`，客户端用别的模式会被 400。不确定就保持 `auto`。
 * 面板节点需 `security: tls`、`enable_reality: false`（REALITY 不能套 CDN）；源站证书按 `config.yml` 的 `CertConfig` 配置，ALPN 未下发时 xray 默认 `h2` + `http/1.1`，CDN 走 HTTP/2 回源无需额外设置。
 
+### 上行与下行：默认不分离
+
+XHTTP 在 HTTP 语义上是**上下行分离**的（两类不同的请求），但**默认不分离链路**——两个方向走同一个域名、同一个端口、同一个 `path`，只是请求形态不同：
+
+| 方向 | 默认形态 | 说明 |
+| :--- | :--- | :--- |
+| 下行 | 一条长连接 `GET`（stream-down） | 服务端按 SSE 下发：`Content-Type: text/event-stream`、`Cache-Control: no-store`、`X-Accel-Buffering: no`，用于让中间设备/回源链路不要缓冲（`noSSEHeader` 可关掉 SSE 头） |
+| 上行 | `POST`（`uplinkHTTPMethod` 可改） | 具体形态由 `mode` 决定 |
+
+各 `mode` 的上行形态：
+
+| `mode` | 上行 | 备注 |
+| :--- | :--- | :--- |
+| `packet-up` | 数据切片，**每片一个独立 POST**（带 seq） | 最像普通 API 请求，穿透性最好；每片一次往返，RTT 会被中间链路放大 |
+| `stream-up` | **一条长 POST** 持续写 | 上行延迟低；若中间设备缓冲请求体，会明显卡顿甚至断流 |
+| `stream-one` | 单个 POST 连接**双向** | 等于不分上下行，依赖 HTTP/2·3 双向流 |
+| `auto`（默认） | 由客户端按场景选择 | 无 REALITY → `packet-up`；REALITY → `stream-one`；配了 `downloadSettings` → `stream-up` |
+
+因此 CDN 上抓包看到「1 条长 GET + 若干 POST」是正常现象，不是两条独立线路。
+
+#### 真·上下行分离（`downloadSettings`）：当前未支持
+
+Xray 允许客户端把**下行**单独 dial 到另一个目标（`downloadSettings`，可以不同 IP／端口／TLS／Host／path），上行仍走主入口。启用后：
+
+* 下行入口必须同样跑一个 xhttp 入站（同用户、同 `path`、同 Host 校验规则），否则握手后直接失败；
+* 这套写法意味着**源站地址要交给客户端**，CDN 隐藏源站的收益随之消失；
+* **XrayR 目前既不解析也不下发 `downloadSettings`**（`CustomConfig` 无该字段，`SplitHTTPConfig.DownloadSettings` 恒为空），面板订阅也不生成，所以面板 + XrayR 这套组合下暂时无法启用。
+
+### 套 CDN 时各模式的实际表现
+
+| 现象 | 可能原因 | 处理 |
+| :--- | :--- | :--- |
+| 能握手、下载卡顿或几十秒后断 | CDN 缓冲了下行的 SSE 流，或空闲/响应超时太短 | 关闭「智能加速／流媒体优化／内容缓冲」类开关，放宽响应超时；必要时把该路径设为不缓存 |
+| 上行很慢、下载正常 | `packet-up` 每片一次往返，被 CDN 的 RTT 放大 | 属预期；想压延迟只能在能承受的前提下换 `stream-up` |
+| 上行卡住、上传几乎不动 | `stream-up` 的长 POST 被 CDN 缓冲请求体 | 换回 `packet-up`，或改用不走缓冲的通道 |
+| 客户端报连接重置/立刻失败 | CDN 不允许 POST，或 `path`／Host 与源站不一致 | 先确认 `xhttp_path`／`xhttp_host` 与回源一致，再确认 CDN 放行 POST |
+
 ## X25519MLKEM768（后量子密钥交换）
 
 REALITY 的 TLS 1.3 握手支持 X25519MLKEM768 混合后量子密钥交换，用于抗「先存后破」（harvest now, decrypt later）。
