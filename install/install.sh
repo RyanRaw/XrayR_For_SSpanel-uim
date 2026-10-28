@@ -423,6 +423,44 @@ install_manager() {
     log_info "管理脚本已安装到 ${MANAGER_BIN}"
 }
 
+# ==================== AList 伪装站 + 反代加固 ====================
+# 独立脚本 install/alist-mask.sh：装 AList 只读伪站、nginx 按路径分流 xhttp、
+# 管理入口/WebDAV 白名单加固。这里只负责取到最新版再执行。
+install_mask() {
+    local cdn_url="https://cdn.jsdelivr.net/gh/${OWNER}/${SCRIPT_REPO}@master/install/alist-mask.sh"
+    local raw_url="https://raw.githubusercontent.com/${OWNER}/${SCRIPT_REPO}/master/install/alist-mask.sh"
+    local tmp ok=0
+
+    tmp="$(mktemp 2>/dev/null || echo "/tmp/alist-mask.sh.$$")"
+    trap 'rm -f "${tmp:-}"' EXIT
+
+    # 与维护脚本同理：先清 jsDelivr 缓存，再校验语法，避免跑到半截文件
+    curl -fsL --max-time 20 \
+        "https://purge.jsdelivr.net/gh/${OWNER}/${SCRIPT_REPO}@master/install/alist-mask.sh" >/dev/null 2>&1 || true
+
+    fetch_mask() {
+        local url="$1"
+        if download_file "$url" "${tmp}.part" && [[ -s "${tmp}.part" ]] && bash -n "${tmp}.part" 2>/dev/null; then
+            mv -f "${tmp}.part" "$tmp"
+            return 0
+        fi
+        rm -f "${tmp}.part"
+        return 1
+    }
+
+    if fetch_mask "$cdn_url"; then
+        ok=1
+    elif fetch_mask "$raw_url"; then
+        ok=1
+    fi
+    if [[ "$ok" != "1" ]]; then
+        log_error "伪装站脚本下载失败，请检查网络后重试。"
+        exit 1
+    fi
+
+    bash "$tmp" "$@"
+}
+
 # ==================== 配置文件复制 ====================
 copy_config_files() {
     if [[ -f "$INSTALL_DIR/geoip.dat" ]]; then
@@ -667,12 +705,13 @@ uninstall_xrayr() {
 # ==================== 用法 ====================
 usage() {
     cat <<EOF
-用法: $(basename "$0") [install|update|uninstall|optimize] [版本]
+用法: $(basename "$0") [install|update|uninstall|optimize|mask] [版本]
 
 命令:
   install [版本]   安装 XrayR（默认检测最新版本）
   update [版本]    更新 XrayR（默认检测最新版本）
   optimize         仅应用网络优化，不安装 XrayR
+  mask             一键搭建 AList 伪装站 + 反代加固（XHTTP + CDN 用）
   uninstall        卸载 XrayR
   version          查看 XrayR 版本
 
@@ -681,6 +720,9 @@ usage() {
   $(basename "$0") install v0.9.5   # 安装指定版本
   $(basename "$0") update           # 更新到最新版
   $(basename "$0") optimize         # 仅网络优化
+  $(basename "$0") mask --domain ro.example.com --path /steam --upstream 127.0.0.1:21074
+                                    # 伪装站：AList 只读 + 管理入口白名单加固
+  $(basename "$0") mask --help      # 查看伪装站脚本的全部参数
 EOF
 }
 
@@ -702,6 +744,11 @@ main() {
             need_root
             optimize_network
             log_info "网络优化完成。"
+            ;;
+        mask|alist)
+            need_root
+            check_os
+            install_mask "${@:2}"
             ;;
         uninstall)
             need_root

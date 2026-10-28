@@ -27,6 +27,7 @@
 * [自动申请证书说明](/gong-neng-shuo-ming/cert.md)
 * [Fallback 功能说明](/gong-neng-shuo-ming/fallback.md)
 * [REALITY、XHTTP 与后量子特性](/gong-neng-shuo-ming/reality-xhttp-pq.md)
+* [AList 伪装站 + 反代加固](/gong-neng-shuo-ming/alist-mask.md)
 
 ## 杂项
 

@@ -102,6 +102,17 @@ A Xray backend framework that can easily support many panels.
 bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh)
 ```
 
+### 一键搭伪装站（XHTTP + CDN）
+
+套 CDN 的节点建议配一个伪装站：路径命中 xhttp 的走后端，其余落到只读的 AList 文件站，并把管理入口按 IP 白名单收起来。
+
+```bash
+bash <(curl -Ls https://cdn.jsdelivr.net/gh/RyanRaw/XrayR_For_SSpanel-uim@master/install/install.sh) mask \
+  --domain ro.example.com --path /steam --upstream 127.0.0.1:21074
+```
+
+同时装好 nginx（80/443 都监听，兼容 CDN 的 Flexible/Full 回源）、Cloudflare 真实 IP 还原、管理入口与 `/dav` 白名单（非白名单返回 404）。参数与文件清单见 [AList 伪装站 + 反代加固](docs/gong-neng-shuo-ming/alist-mask.md)。
+
 ### 手动安装
 
 [手动安装教程](https://ryanraw.github.io/XrayR_For_SSpanel-uim/xrayr-xia-zai-he-an-zhuang/install/manual)
